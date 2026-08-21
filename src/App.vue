@@ -23,7 +23,7 @@ import { useCanvasShortcuts } from './composables/useCanvasShortcuts'
 import { useContextMenu } from './composables/useContextMenu'
 import type { RecipeGraphData } from './types'
 
-const { onNodeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate } =
+const { onNodeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport } =
   useVueFlow()
 const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode } =
   useRecipeGraph()
@@ -77,6 +77,10 @@ onNodeClick(({ node }) => {
   selectedNodeId.value = node.id
   // 核心交互：点击任意物品节点 -> 高亮完整上游配方链
   highlightFromNode(node.id)
+  // 聚焦：将节点居中并放大，形成聚焦效果
+  const w = node.dimensions?.width ?? 60
+  const h = node.dimensions?.height ?? 60
+  setCenter(node.position.x + w / 2, node.position.y + h / 2, { zoom: 1.3, duration: 400 })
   // 清除因点击产生的浏览器文本选区，避免属性面板文字呈“选中”态
   window.getSelection()?.removeAllRanges()
 })
@@ -252,6 +256,7 @@ const shortcutsList = [
       >
         <Background :gap="16" pattern-color="#dcdfe6" />
         <Controls />
+        <div class="zoom-indicator">{{ Math.round(viewport.zoom * 100) }}%</div>
         <MiniMap pannable zoomable />
       </VueFlow>
 
@@ -334,13 +339,29 @@ const shortcutsList = [
 .hint {
   position: absolute;
   bottom: 12px;
-  left: 12px;
+  right: 12px;
   font-size: 12px;
   color: #909399;
   background: rgba(255, 255, 255, 0.85);
   padding: 4px 10px;
   border-radius: 6px;
   pointer-events: none;
+  max-width: 60%;
+}
+.zoom-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 60px;
+  z-index: 5;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #606266;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e4e7ed;
+  padding: 3px 9px;
+  border-radius: 6px;
+  pointer-events: none;
+  user-select: none;
 }
 /* 画布内悬浮属性面板 */
 .float-panel {

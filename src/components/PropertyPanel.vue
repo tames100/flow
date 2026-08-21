@@ -177,12 +177,14 @@ watch(selectedId, (v) => emit('update:modelValue', v))
           </el-form-item>
         </template>
 
-        <el-button type="primary" plain style="width: 100%" @click="onDuplicate">
-          复制节点
-        </el-button>
-        <el-button type="danger" plain style="width: 100%; margin-top: 10px" @click="onDelete">
-          删除节点
-        </el-button>
+        <el-button-group style="width: 100%; display: flex">
+          <el-button type="primary" plain style="flex: 1" @click="onDuplicate">
+            复制节点
+          </el-button>
+          <el-button type="danger" plain style="flex: 1" @click="onDelete">
+            删除节点
+          </el-button>
+        </el-button-group>
       </el-form>
     </template>
   </div>
