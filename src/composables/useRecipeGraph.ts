@@ -59,6 +59,9 @@ export function useRecipeGraph() {
       if (e.targetHandle) o.targetHandle = e.targetHandle
       if (e.type) o.type = e.type
       if (e.class) o.class = e.class
+      if (e.animated) o.animated = e.animated
+      if (e.style) o.style = JSON.parse(JSON.stringify(e.style))
+      if (e.markerEnd) o.markerEnd = JSON.parse(JSON.stringify(e.markerEnd))
       if (e.label) o.label = e.label
       if (e.labelStyle) o.labelStyle = e.labelStyle
       if (e.labelBgStyle) o.labelBgStyle = e.labelBgStyle
@@ -204,7 +207,10 @@ export function useRecipeGraph() {
         source: s.node.id,
         target: actionNode.id,
         class: 'recipe-edge',
-        // 有向图：输入边箭头蓝色（指向加工节点）
+        // 默认虚线 + 流动动画（有向图）
+        animated: true,
+        style: { stroke: '#409eff', strokeWidth: 2, strokeDasharray: '8 4' },
+        // 输入边箭头蓝色（指向加工节点）
         markerEnd: { type: MarkerType.ArrowClosed, color: '#409eff', width: 16, height: 16 },
         label: s.quantity > 1 ? `×${s.quantity}` : '',
         labelStyle: { fill: '#409eff', fontWeight: 700, fontSize: '12px' },
@@ -217,7 +223,10 @@ export function useRecipeGraph() {
         source: actionNode.id,
         target: outputNode.id,
         class: 'recipe-edge',
-        // 有向图：输出边箭头橙色（从加工节点指出）
+        // 默认虚线 + 流动动画（有向图）
+        animated: true,
+        style: { stroke: '#e6a23c', strokeWidth: 2, strokeDasharray: '8 4' },
+        // 输出边箭头橙色（从加工节点指出）
         markerEnd: { type: MarkerType.ArrowClosed, color: '#e6a23c', width: 16, height: 16 },
         label: outQty > 1 ? `×${outQty}` : '',
         labelStyle: { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' },
@@ -327,12 +336,24 @@ export function useRecipeGraph() {
     const { mergeImported } = useActionTypes()
     mergeImported(data.actions)
     setNodes(data.nodes)
-    // 统一为有向图：导入数据若缺少箭头，自动补默认箭头
-    const decoratedEdges = data.edges.map((e) => ({
-      ...e,
-      markerEnd:
-        e.markerEnd ?? { type: MarkerType.ArrowClosed, color: '#b1b1b7', width: 14, height: 14 },
-    })) as RecipeEdge[]
+    // 统一为有向图 + 默认虚线动画：导入数据若缺少箭头/样式/动画，自动补齐（按方向着色）
+    const decoratedEdges = data.edges.map((e) => {
+      const srcNode = findNode(e.source)
+      const isOut = srcNode?.data?.kind === 'action'
+      const color = isOut ? '#e6a23c' : '#409eff'
+      return {
+        ...e,
+        animated: e.animated ?? true,
+        style: e.style ?? { stroke: color, strokeWidth: 2, strokeDasharray: '8 4' },
+        markerEnd:
+          e.markerEnd ?? {
+            type: MarkerType.ArrowClosed,
+            color,
+            width: 16,
+            height: 16,
+          },
+      }
+    }) as RecipeEdge[]
     setEdges(decoratedEdges)
     nodes.value = JSON.parse(JSON.stringify(data.nodes))
     edges.value = JSON.parse(JSON.stringify(decoratedEdges))

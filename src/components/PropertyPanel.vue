@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useVueFlow } from '@vue-flow/core'
+import { useVueFlow, MarkerType } from '@vue-flow/core'
 import { useRecipeGraph, useActionTypes, useImagePreview } from '../composables'
 
-const { findNode, updateNode, getEdges, updateEdge } = useVueFlow()
-const { deleteNode, duplicateNode, persist, edges } = useRecipeGraph()
+const { findNode, updateNode, getEdges, removeEdges } = useVueFlow()
+const { deleteNode, duplicateNode, persist } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 const { openImage } = useImagePreview()
 
-// 由 App 通过 v-model 同步选中节点
-const props = defineProps<{ modelValue: string | null }>()
-const emit = defineEmits<{ 'update:modelValue': [string | null] }>()
+// 由 App 通过 v-model 同步选中节点 / 连线
+const props = defineProps<{
+  modelValue: string | null
+  edge?: string | null
+}>()
+const emit = defineEmits<{
+  'update:modelValue': [string | null]
+  'update:edge': [string | null]
+}>()
 
 // 初始即同步当前选中值（解决首帧空白问题）
 const selectedId = ref<string | null>(props.modelValue)
+const edgeId = ref<string | null>(props.edge ?? null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const actionFileInput = ref<HTMLInputElement | null>(null)
 
@@ -59,11 +66,12 @@ const image = computed(() => (node.value?.data as any)?.image ?? '')
 
 // ---- 加工节点输入 / 输出数量（有向图语义）----
 // 任何指向加工节点的连线均为输入；任何从加工节点指出的连线均为输出
+// 直接从 VueFlow store 过滤，保证连线对象是响应式的（数量修改即时生效）
 const inEdges = computed(() =>
-  selectedId.value ? edges.value.filter((e) => e.target === selectedId.value) : [],
+  selectedId.value ? getEdges.value.filter((e) => e.target === selectedId.value) : [],
 )
 const outEdges = computed(() =>
-  selectedId.value ? edges.value.filter((e) => e.source === selectedId.value) : [],
+  selectedId.value ? getEdges.value.filter((e) => e.source === selectedId.value) : [],
 )
 
 function qtyFromLabel(label: unknown): number {
@@ -76,32 +84,123 @@ function nodeName(id: string) {
   return ((n?.data as any)?.label as string) || id
 }
 
-/** 更新单条连线的数量（该边指向本节点则为输入，由本节点指出则为输出），同步连线数字 */
+/** 更新单条连线的数量（指向本节点=输入，本节点指出=输出），直接修改响应式连线对象，连线数字即时同步 */
 function applyEdgeQty(e: any, q: number) {
-  const isIn = e.target === selectedId.value
+  const isIn = e.target === selectedId.value || e.target === edgeId.value
   const label = q > 1 ? `×${q}` : ''
-  const labelStyle = isIn
-    ? { fill: '#409eff', fontWeight: 700, fontSize: '12px' }
-    : { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' }
-  // 同步画布上的连线数字
-  const vf = getEdges.value.find((x) => x.id === e.id)
-  if (vf) {
-    updateEdge(vf as any, {
-      label,
-      labelStyle,
-      labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
-      labelBgPadding: [4, 2] as [number, number],
-      labelBgBorderRadius: 4,
-    } as any)
-  }
-  // 同步本地存储
-  e.label = label
-  e.labelStyle = labelStyle
+  const color = isIn ? '#409eff' : '#e6a23c'
+  Object.assign(e, {
+    label,
+    labelStyle: { fill: color, fontWeight: 700, fontSize: '12px' },
+    labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+    labelBgPadding: [4, 2],
+    labelBgBorderRadius: 4,
+  })
   persist()
 }
 
-function onEdgeQtyChange(e: any, v: number | undefined) {
+function onQtyInput(e: any, v: number | undefined) {
   applyEdgeQty(e, v ?? 1)
+}
+
+// ---- 连线编辑模式（点击连线后编辑样式）----
+const selectedEdge = computed(() =>
+  edgeId.value ? getEdges.value.find((e) => e.id === edgeId.value) ?? null : null,
+)
+
+const edgeQty = computed({
+  get: () => (selectedEdge.value ? qtyFromLabel(selectedEdge.value.label) : 1),
+  set: (v: number | undefined) => {
+    if (selectedEdge.value) applyEdgeQty(selectedEdge.value, v ?? 1)
+  },
+})
+
+const MARKER_MAP: Record<string, MarkerType | undefined> = {
+  arrowclosed: MarkerType.ArrowClosed,
+  arrow: MarkerType.Arrow,
+  none: undefined,
+}
+
+function markerName(markerEnd: unknown): string {
+  const t = (markerEnd as any)?.type
+  if (t === MarkerType.Arrow) return 'arrow'
+  return 'arrowclosed'
+}
+
+function dashName(dasharray: string | undefined): string {
+  if (!dasharray || dasharray === 'none' || dasharray === '0') return 'solid'
+  if (dasharray === '2 4') return 'dotted'
+  return 'dashed'
+}
+
+const edgeLineStyle = computed({
+  get: () => dashName((selectedEdge.value?.style as any)?.strokeDasharray),
+  set: (v: string) =>
+    applyEdgeStyle({
+      strokeDasharray: v === 'solid' ? 'none' : v === 'dotted' ? '2 4' : '8 4',
+    }),
+})
+
+const edgeColor = computed({
+  get: () => (selectedEdge.value?.style as any)?.stroke ?? '#409eff',
+  set: (v: string) => {
+    const e = selectedEdge.value
+    if (!e) return
+    const next: any = { ...e }
+    next.style = {
+      stroke: v,
+      strokeWidth: (e.style as any)?.strokeWidth ?? 2,
+      strokeDasharray: (e.style as any)?.strokeDasharray ?? '8 4',
+    }
+    const type = MARKER_MAP[markerName(e.markerEnd)]
+    next.markerEnd = type ? { type, color: v, width: 16, height: 16 } : undefined
+    // 数量数字颜色跟随连线颜色，保持视觉一致
+    next.labelStyle = { ...((e.labelStyle as any) ?? {}), fill: v }
+    Object.assign(e, next)
+    persist()
+  },
+})
+
+const edgeAnimated = computed({
+  get: () => !!selectedEdge.value?.animated,
+  set: (v: boolean) => applyEdgeStyle({ animated: v }),
+})
+
+const edgeMarker = computed({
+  get: () => markerName(selectedEdge.value?.markerEnd),
+  set: (v: string) => applyEdgeStyle({ marker: v }),
+})
+
+/** 统一更新选中连线的样式字段（响应式对象 + 持久化） */
+function applyEdgeStyle(patch: Record<string, unknown>) {
+  const e = selectedEdge.value
+  if (!e) return
+  const next: any = { ...e }
+  if ('stroke' in patch || 'strokeDasharray' in patch) {
+    next.style = {
+      stroke: (patch.stroke as string) ?? (e.style as any)?.stroke ?? '#409eff',
+      strokeWidth: (e.style as any)?.strokeWidth ?? 2,
+      strokeDasharray:
+        (patch.strokeDasharray as string) ?? (e.style as any)?.strokeDasharray ?? '8 4',
+    }
+  }
+  if ('animated' in patch) next.animated = patch.animated as boolean
+  if ('marker' in patch) {
+    const type = MARKER_MAP[patch.marker as string]
+    const color = ((e.markerEnd as any)?.color as string) ?? (e.style as any)?.stroke ?? '#409eff'
+    next.markerEnd = type ? { type, color, width: 16, height: 16 } : undefined
+  }
+  Object.assign(e, next)
+  persist()
+}
+
+function onDeleteEdge() {
+  const id = edgeId.value
+  if (id) {
+    removeEdges(id)
+    edgeId.value = null
+    persist()
+  }
 }
 
 function pickImage() {
@@ -155,22 +254,60 @@ function onDelete() {
   }
 }
 
-// 由 App 通过 v-model 同步选中节点（props/emit/selectedId 已在顶部声明）
+// 由 App 通过 v-model 同步选中（props/emit/selectedId 已在顶部声明）
 watch(
   () => props.modelValue,
   (v) => (selectedId.value = v),
 )
 watch(selectedId, (v) => emit('update:modelValue', v))
+watch(
+  () => props.edge,
+  (v) => (edgeId.value = v ?? null),
+)
+watch(edgeId, (v) => emit('update:edge', v))
 </script>
 
 <template>
   <div class="prop-panel">
     <h3 class="panel-title">属性面板</h3>
 
-    <el-empty v-if="!node" description="选中一个节点以编辑属性" :image-size="60" />
-
-    <template v-else>
+    <!-- ===== 连线编辑模式 ===== -->
+    <template v-if="selectedEdge">
       <el-form label-position="top">
+        <el-form-item label="连线方向">
+          <span class="edge-dir">{{ nodeName(selectedEdge.source) }} → {{ nodeName(selectedEdge.target) }}</span>
+        </el-form-item>
+        <el-form-item label="数量">
+          <el-input-number v-model="edgeQty" :min="1" :max="9999" controls-position="right" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="线条样式">
+          <el-select v-model="edgeLineStyle" style="width: 100%">
+            <el-option label="实线" value="solid" />
+            <el-option label="虚线" value="dashed" />
+            <el-option label="点线" value="dotted" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="颜色">
+          <el-color-picker v-model="edgeColor" />
+        </el-form-item>
+        <el-form-item label="动画">
+          <el-switch v-model="edgeAnimated" active-text="流动动画" inactive-text="静态" />
+        </el-form-item>
+        <el-form-item label="端点样式">
+          <el-select v-model="edgeMarker" style="width: 100%">
+            <el-option label="实心箭头" value="arrowclosed" />
+            <el-option label="空心箭头" value="arrow" />
+            <el-option label="无端点" value="none" />
+          </el-select>
+        </el-form-item>
+        <el-button type="danger" plain style="width: 100%" @click="onDeleteEdge">删除连线</el-button>
+      </el-form>
+    </template>
+
+    <!-- ===== 节点编辑模式 ===== -->
+    <template v-else>
+      <el-empty v-if="!node" description="选中一个节点或连线以编辑属性" :image-size="60" />
+      <el-form v-else label-position="top">
         <el-form-item label="节点类型">
           <el-tag :type="isItem ? 'success' : 'warning'">
             {{ isItem ? '物品节点' : '加工动作节点' }}
@@ -212,7 +349,7 @@ watch(selectedId, (v) => emit('update:modelValue', v))
                 controls-position="right"
                 size="small"
                 style="width: 120px"
-                @change="onEdgeQtyChange(e, $event)"
+                @update:model-value="onQtyInput(e, $event)"
               />
             </div>
             <div class="qty-tip">指向本加工节点的连线均为输入</div>
@@ -227,7 +364,7 @@ watch(selectedId, (v) => emit('update:modelValue', v))
                 controls-position="right"
                 size="small"
                 style="width: 120px"
-                @change="onEdgeQtyChange(e, $event)"
+                @update:model-value="onQtyInput(e, $event)"
               />
             </div>
             <div class="qty-tip">本加工节点指出的连线均为输出</div>
@@ -310,6 +447,11 @@ watch(selectedId, (v) => emit('update:modelValue', v))
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.edge-dir {
+  font-size: 13px;
+  color: #606266;
+  word-break: break-all;
 }
 .img-box {
   display: flex;

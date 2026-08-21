@@ -25,7 +25,7 @@ import {
   type RecipeGraphData,
 } from './composables'
 
-const { onNodeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode } =
+const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode } =
   useVueFlow()
 const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode } =
   useRecipeGraph()
@@ -39,6 +39,7 @@ useCanvasShortcuts({
   onEscape: () => {
     clearHighlight()
     selectedNodeId.value = null
+    selectedEdgeId.value = null
   },
   // Ctrl/Cmd + S：保存完整画布状态
   onSave: onSaveState,
@@ -89,12 +90,15 @@ onBeforeUnmount(() => {
 // 拖拽节点结束后自动保存位置
 onNodeDragStop(() => persist())
 
-// 点击画布空白处：清除文本选区（避免残留选中高亮）
+// 点击画布空白处：取消选中与文本选区
 onPaneClick(() => {
+  selectedNodeId.value = null
+  selectedEdgeId.value = null
   window.getSelection()?.removeAllRanges()
 })
 
 const selectedNodeId = ref<string | null>(null)
+const selectedEdgeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
 const formDialogVisible = ref(false)
 
@@ -103,9 +107,18 @@ const nodeTypes: Record<string, any> = {
   action: ActionNode,
 }
 
+// 选中连线同步到属性面板（连线样式编辑）
+onEdgeClick(({ edge }) => {
+  selectedNodeId.value = null
+  clearHighlight()
+  selectedEdgeId.value = edge.id
+  window.getSelection()?.removeAllRanges()
+})
+
 // 选中节点同步到属性面板
 onNodeClick(({ node }) => {
   selectedNodeId.value = node.id
+  selectedEdgeId.value = null
   // 核心交互：点击任意物品节点 -> 高亮完整上游配方链
   highlightFromNode(node.id)
   // 聚焦：将节点居中并放大，形成聚焦效果
@@ -116,18 +129,21 @@ onNodeClick(({ node }) => {
   window.getSelection()?.removeAllRanges()
 })
 
-// 连线时记录（供手动拖拽连接使用）：统一为有向图，从加工节点指出=输出(橙)，指向加工节点=输入(蓝)
+// 连线时记录（供手动拖拽连接使用）：统一为有向图 + 默认虚线动画，从加工节点指出=输出(橙)，指向加工节点=输入(蓝)
 onConnect((connection) => {
   const srcNode = findNode(connection.source)
   const isOut = srcNode?.data?.kind === 'action'
+  const color = isOut ? '#e6a23c' : '#409eff'
   addEdges([
     {
       ...connection,
       id: `e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       class: 'recipe-edge',
+      animated: true,
+      style: { stroke: color, strokeWidth: 2, strokeDasharray: '8 4' },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: isOut ? '#e6a23c' : '#409eff',
+        color,
         width: 16,
         height: 16,
       },
@@ -187,6 +203,7 @@ function onImportChange(e: Event) {
       importJSON(data)
       clearHighlight()
       selectedNodeId.value = null
+      selectedEdgeId.value = null
       ElMessage.success('导入成功')
     } catch (err) {
       ElMessage.error('导入失败：JSON 解析错误')
@@ -204,6 +221,7 @@ function onReset() {
       importJSON({ version: '1.0', actions: [], nodes: [], edges: [] })
       clearHighlight()
       selectedNodeId.value = null
+      selectedEdgeId.value = null
     })
     .catch(() => {})
 }
@@ -225,6 +243,7 @@ function createItemAt(screen: { x: number; y: number }) {
   addNodes([node as any])
   persist()
   selectedNodeId.value = node.id
+  selectedEdgeId.value = null
   highlightFromNode(node.id)
 }
 
@@ -234,6 +253,7 @@ function createActionAt(screen: { x: number; y: number }) {
   addNodes([node as any])
   persist()
   selectedNodeId.value = node.id
+  selectedEdgeId.value = null
   highlightFromNode(node.id)
 }
 
@@ -245,6 +265,7 @@ function onCtxCreateAction(screen: { x: number; y: number }) {
 }
 function onCtxEdit(nodeId: string) {
   selectedNodeId.value = nodeId
+  selectedEdgeId.value = null
   highlightFromNode(nodeId)
 }
 function onCtxDuplicate(nodeId: string) {
@@ -262,7 +283,8 @@ function onCtxRemove(nodeId: string) {
 const shortcutsList = [
   { keys: '左键拖动', desc: '平移画布' },
   { keys: '滚轮', desc: '缩放画布' },
-  { keys: '点击节点', desc: '选中并在右侧属性面板编辑，高亮其上游配方链' },
+  { keys: '点击节点', desc: '选中并在属性面板编辑，高亮其上游配方链' },
+  { keys: '点击连线', desc: '编辑连线数量与样式（线型 / 颜色 / 动画 / 端点）' },
   { keys: 'Ctrl + 左键拖动', desc: '框选多个节点' },
   { keys: '点击空白', desc: '取消选中 / 取消高亮' },
   { keys: '右键画布', desc: '打开菜单：创建物品/加工动作节点' },
@@ -325,13 +347,13 @@ const shortcutsList = [
         <MiniMap pannable zoomable />
       </VueFlow>
 
-      <!-- 选中节点后的属性面板：画布内悬浮卡片（不覆盖工具栏、不置暗画布） -->
-      <div v-if="selectedNodeId" class="float-panel">
+      <!-- 选中节点 / 连线后的属性面板：画布内悬浮卡片（不覆盖工具栏、不置暗画布） -->
+      <div v-if="selectedNodeId || selectedEdgeId" class="float-panel">
         <div class="float-head">
           <span>属性面板</span>
-          <el-button text size="small" circle @click="selectedNodeId = null">✕</el-button>
+          <el-button text size="small" circle @click="selectedNodeId = null; selectedEdgeId = null">✕</el-button>
         </div>
-        <PropertyPanel v-model="selectedNodeId" />
+        <PropertyPanel v-model="selectedNodeId" v-model:edge="selectedEdgeId" />
       </div>
 
       <div class="hint">提示：点击任意【物品节点】高亮其完整上游配方链；点击空白取消。点击节点可在右侧面板编辑，可继续点其他节点切换。</div>
