@@ -14,6 +14,7 @@ import FormPanel from './components/FormPanel.vue'
 import PropertyPanel from './components/PropertyPanel.vue'
 import ItemNode from './components/nodes/ItemNode.vue'
 import ActionNode from './components/nodes/ActionNode.vue'
+import ImagePreview from './components/ImagePreview.vue'
 
 import { useRecipeGraph } from './composables/useRecipeGraph'
 import { useRecipeHighlight } from './composables/useRecipeHighlight'
@@ -196,6 +197,9 @@ function onReset() {
 
       <div class="hint">提示：点击任意【物品节点】高亮其完整上游配方链；点击空白取消。点击节点可在右侧面板编辑，可继续点其他节点切换。</div>
     </main>
+
+    <!-- 全局图片放大预览 -->
+    <ImagePreview />
 
     <!-- 配方录入弹窗 -->
     <el-dialog

@@ -2,14 +2,21 @@
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import type { ItemNodeData } from '../../types'
+import { useImagePreview } from '../../composables/useImagePreview'
 
 const props = defineProps<{
   id: string
   data: ItemNodeData
 }>()
 
+const { openImage } = useImagePreview()
+
 const hasImage = computed(() => !!props.data.image)
 const displayName = computed(() => props.data.label || '未命名物品')
+
+function zoomImage() {
+  if (hasImage.value) openImage(props.data.image, displayName.value)
+}
 </script>
 
 <template>
@@ -26,7 +33,9 @@ const displayName = computed(() => props.data.label || '未命名物品')
           v-if="hasImage"
           :src="data.image"
           :alt="displayName"
-          class="item-img"
+          class="item-img zoomable"
+          title="点击放大"
+          @click.stop="zoomImage"
         />
         <div v-else class="item-img placeholder">📦</div>
       </div>
@@ -75,6 +84,10 @@ const displayName = computed(() => props.data.label || '未命名物品')
   object-fit: contain;
   border-radius: 8px;
   background: #f4f4f5;
+}
+
+.item-img.zoomable {
+  cursor: zoom-in;
 }
 
 .item-img.placeholder {

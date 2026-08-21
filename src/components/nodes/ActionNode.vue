@@ -2,11 +2,14 @@
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import type { ActionNodeData } from '../../types'
+import { useImagePreview } from '../../composables/useImagePreview'
 
 const props = defineProps<{
   id: string
   data: ActionNodeData
 }>()
+
+const { openImage } = useImagePreview()
 
 const iconMap: Record<string, string> = {
   合成: '⚗️',
@@ -17,6 +20,10 @@ const iconMap: Record<string, string> = {
 
 const icon = computed(() => iconMap[props.data.action] ?? '⚙️')
 const hasImage = computed(() => !!props.data.image)
+
+function zoomImage() {
+  if (hasImage.value) openImage(props.data.image, props.data.label)
+}
 </script>
 
 <template>
@@ -25,7 +32,7 @@ const hasImage = computed(() => !!props.data.image)
     <Handle type="target" :position="Position.Left" :connectable="true" />
 
     <div class="action-body">
-      <img v-if="hasImage" :src="data.image" class="action-img" :alt="data.label" />
+      <img v-if="hasImage" :src="data.image" class="action-img zoomable" :alt="data.label" title="点击放大" @click.stop="zoomImage" />
       <span v-else class="action-icon">{{ icon }}</span>
       <span class="action-label">{{ data.label }}</span>
     </div>
@@ -65,6 +72,10 @@ const hasImage = computed(() => !!props.data.image)
   object-fit: contain;
   border-radius: 8px;
   background: #fff;
+}
+
+.action-img.zoomable {
+  cursor: zoom-in;
 }
 
 .action-label {

@@ -1,6 +1,7 @@
 import { onBeforeUnmount } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { useRecipeGraph } from './useRecipeGraph'
+import { useImagePreview } from './useImagePreview'
 
 /**
  * useCanvasShortcuts —— 画布快捷键。
@@ -15,6 +16,7 @@ import { useRecipeGraph } from './useRecipeGraph'
 export function useCanvasShortcuts(opts: { onSelectAll: () => void; onEscape: () => void }) {
   const { getNodes, getEdges, removeNodes, removeEdges, updateNode, updateEdge } = useVueFlow()
   const { duplicateNode, persist } = useRecipeGraph()
+  const { visible: previewVisible } = useImagePreview()
 
   let clipboard: { id: string }[] = []
 
@@ -64,8 +66,9 @@ export function useCanvasShortcuts(opts: { onSelectAll: () => void; onEscape: ()
       return
     }
 
-    // Esc 取消选中 + 取消高亮
+    // Esc 取消选中 + 取消高亮（图片预览打开时优先交给预览组件处理）
     if (e.key === 'Escape') {
+      if (previewVisible.value) return
       getNodes.value.forEach((n) => updateNode(n.id, { selected: false } as any))
       getEdges.value.forEach((ed) => updateEdge(ed as any, { selected: false } as any))
       opts.onEscape()
