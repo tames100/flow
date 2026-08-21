@@ -15,17 +15,22 @@ import PropertyPanel from './components/PropertyPanel.vue'
 import ItemNode from './components/nodes/ItemNode.vue'
 import ActionNode from './components/nodes/ActionNode.vue'
 import ImagePreview from './components/ImagePreview.vue'
+import ContextMenu from './components/ContextMenu.vue'
 
 import { useRecipeGraph } from './composables/useRecipeGraph'
 import { useRecipeHighlight } from './composables/useRecipeHighlight'
 import { useCanvasShortcuts } from './composables/useCanvasShortcuts'
+import { useContextMenu } from './composables/useContextMenu'
 import type { RecipeGraphData } from './types'
 
-const { onNodeClick, onConnect, addEdges, onNodeDragStop, onPaneClick } =
+const { onNodeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate } =
   useVueFlow()
-const { detectCycle, exportJSON, importJSON, persist, loadFromStorage } =
+const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
+const { open: openContextMenu } = useContextMenu()
+
+const shortcutsVisible = ref(false)
 
 // 画布快捷键
 useCanvasShortcuts({
@@ -144,6 +149,73 @@ function onReset() {
     })
     .catch(() => {})
 }
+
+// ---- 画布右键菜单 ----
+// 在画布空白处右键：打开画布级菜单（创建节点）
+function onCanvasContextMenu(e: MouseEvent) {
+  const targetEl = e.target as HTMLElement
+  // 仅当右键落在画布空白(pane)时才打开画布菜单；节点右键已在节点组件内处理并 stopPropagation
+  if (targetEl && targetEl.classList.contains('vue-flow__pane')) {
+    openContextMenu(e, { type: 'canvas' })
+  }
+}
+
+// 根据右键屏幕坐标创建节点并打开属性面板编辑
+function createItemAt(screen: { x: number; y: number }) {
+  const pos = screenToFlowCoordinate({ x: screen.x, y: screen.y })
+  const node = createItemNode('新物品', '', pos)
+  addNodes([node as any])
+  persist()
+  selectedNodeId.value = node.id
+  highlightFromNode(node.id)
+}
+
+function createActionAt(screen: { x: number; y: number }) {
+  const pos = screenToFlowCoordinate({ x: screen.x, y: screen.y })
+  const node = createActionNode('合成', pos)
+  addNodes([node as any])
+  persist()
+  selectedNodeId.value = node.id
+  highlightFromNode(node.id)
+}
+
+function onCtxCreateItem(screen: { x: number; y: number }) {
+  createItemAt(screen)
+}
+function onCtxCreateAction(screen: { x: number; y: number }) {
+  createActionAt(screen)
+}
+function onCtxEdit(nodeId: string) {
+  selectedNodeId.value = nodeId
+  highlightFromNode(nodeId)
+}
+function onCtxDuplicate(nodeId: string) {
+  duplicateNode(nodeId)
+  persist()
+}
+function onCtxRemove(nodeId: string) {
+  deleteNode(nodeId)
+  persist()
+  if (selectedNodeId.value === nodeId) selectedNodeId.value = null
+  clearHighlight()
+}
+
+// ---- 快捷键说明 ----
+const shortcutsList = [
+  { keys: '左键拖动', desc: '平移画布' },
+  { keys: '滚轮', desc: '缩放画布' },
+  { keys: '点击节点', desc: '选中并在右侧属性面板编辑，高亮其上游配方链' },
+  { keys: 'Ctrl + 左键拖动', desc: '框选多个节点' },
+  { keys: '点击空白', desc: '取消选中 / 取消高亮' },
+  { keys: '右键画布', desc: '打开菜单：创建物品/加工动作节点' },
+  { keys: '右键节点', desc: '打开菜单：属性修改 / 复制 / 删除' },
+  { keys: 'Ctrl + A', desc: '全选所有节点' },
+  { keys: 'Ctrl + C', desc: '复制选中节点' },
+  { keys: 'Ctrl + V', desc: '粘贴（复制生成的新节点）' },
+  { keys: 'Delete / Backspace', desc: '删除选中节点' },
+  { keys: 'Esc', desc: '取消选中 / 关闭弹窗 / 关闭图片预览' },
+]
+
 </script>
 
 <template>
@@ -157,12 +229,13 @@ function onReset() {
         <el-button size="small" type="success" @click="onExport">导出 JSON</el-button>
         <el-button size="small" @click="onImportClick">导入 JSON</el-button>
         <el-button size="small" type="danger" plain @click="onReset">清空</el-button>
+        <el-button size="small" @click="shortcutsVisible = true">⌨ 快捷键说明</el-button>
         <input ref="importInput" type="file" accept="application/json" style="display:none" @change="onImportChange" />
       </div>
     </header>
 
     <!-- 画布区 -->
-    <main class="center">
+    <main class="center" @contextmenu="onCanvasContextMenu">
       <VueFlow
         :node-types="nodeTypes"
         :default-viewport="{ zoom: 0.9 }"
@@ -193,6 +266,27 @@ function onReset() {
 
     <!-- 全局图片放大预览 -->
     <ImagePreview />
+
+    <!-- 自定义右键菜单 -->
+    <ContextMenu
+      @create-item="onCtxCreateItem"
+      @create-action="onCtxCreateAction"
+      @edit="onCtxEdit"
+      @duplicate="onCtxDuplicate"
+      @remove="onCtxRemove"
+    />
+
+    <!-- 快捷键说明弹窗 -->
+    <el-dialog v-model="shortcutsVisible" title="快捷键说明" width="440px" append-to-body>
+      <el-table :data="shortcutsList" size="small" border>
+        <el-table-column prop="keys" label="快捷键" width="140">
+          <template #default="{ row }">
+            <span class="kbd">{{ row.keys }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="desc" label="功能说明" />
+      </el-table>
+    </el-dialog>
 
     <!-- 配方录入弹窗 -->
     <el-dialog
@@ -277,4 +371,12 @@ function onReset() {
   height: auto;
   overflow-y: auto;
 }
-</style>
+.kbd {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  background: #f4f4f5;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}</style>

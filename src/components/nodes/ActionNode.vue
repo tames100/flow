@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import type { ActionNodeData } from '../../types'
 import { useImagePreview } from '../../composables/useImagePreview'
+import { useContextMenu } from '../../composables/useContextMenu'
 
 const props = defineProps<{
   id: string
@@ -10,6 +11,7 @@ const props = defineProps<{
 }>()
 
 const { openImage } = useImagePreview()
+const { open: openContextMenu } = useContextMenu()
 
 const iconMap: Record<string, string> = {
   合成: '⚗️',
@@ -24,10 +26,14 @@ const hasImage = computed(() => !!props.data.image)
 function zoomImage() {
   if (hasImage.value) openImage(props.data.image, props.data.label)
 }
+
+function onContextMenu(e: MouseEvent) {
+  openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'action' })
+}
 </script>
 
 <template>
-  <div class="action-node">
+  <div class="action-node" @contextmenu="onContextMenu">
     <!-- 接收多个输入物品（左侧入点） -->
     <Handle type="target" :position="Position.Left" :connectable="true" />
 

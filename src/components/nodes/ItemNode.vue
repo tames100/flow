@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import type { ItemNodeData } from '../../types'
 import { useImagePreview } from '../../composables/useImagePreview'
+import { useContextMenu } from '../../composables/useContextMenu'
 
 const props = defineProps<{
   id: string
@@ -10,6 +11,7 @@ const props = defineProps<{
 }>()
 
 const { openImage } = useImagePreview()
+const { open: openContextMenu } = useContextMenu()
 
 const hasImage = computed(() => !!props.data.image)
 const displayName = computed(() => props.data.label || '未命名物品')
@@ -17,12 +19,17 @@ const displayName = computed(() => props.data.label || '未命名物品')
 function zoomImage() {
   if (hasImage.value) openImage(props.data.image, displayName.value)
 }
+
+function onContextMenu(e: MouseEvent) {
+  openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'item' })
+}
 </script>
 
 <template>
   <div
     class="item-node"
     :class="{ 'no-label': !data.showLabel }"
+    @contextmenu="onContextMenu"
   >
     <!-- 输入连接点（物品作为原料时位于左侧） -->
     <Handle type="target" :position="Position.Left" :connectable="true" />
