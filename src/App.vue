@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -38,12 +38,22 @@ useCanvasShortcuts({
     clearHighlight()
     selectedNodeId.value = null
   },
+  // Ctrl/Cmd + S：保存为本地文件
+  onSave: onSaveFile,
 })
 
 // 启动时从 localStorage 恢复自动保存的数据
 onMounted(() => {
   loadFromStorage()
+  // 10s 一次的自动保存（静默写入 localStorage，作为草稿，避免频繁下载文件干扰）
+  autoSaveTimer = window.setInterval(() => persist(), 10000)
 })
+
+onBeforeUnmount(() => {
+  if (autoSaveTimer) window.clearInterval(autoSaveTimer)
+})
+
+let autoSaveTimer: number | undefined
 
 // 拖拽节点结束后自动保存位置
 onNodeDragStop(() => persist())
@@ -90,20 +100,13 @@ function onAddRecipe() {
   formDialogVisible.value = true
 }
 
-function onSave() {
+// 保存：导出为本地 .json 文件（直接落盘），并弹窗提示成功
+function onSaveFile() {
+  // 循环依赖仅作警告，不阻断保存
   const cycle = detectCycle()
   if (cycle.length > 0) {
-    ElMessageBox.alert(
-      `保存失败：图中存在循环依赖（${cycle.length} 个节点）。请先消除循环。`,
-      '循环依赖',
-      { type: 'error' },
-    )
-    return
+    ElMessage.warning(`注意：图中存在循环依赖（${cycle.length} 个节点），仍已保存`)
   }
-  ElMessage.success('保存校验通过：无循环依赖')
-}
-
-function onExport() {
   const data = exportJSON()
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -112,7 +115,7 @@ function onExport() {
   a.download = `recipe_${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('已导出 JSON')
+  ElMessage.success('已保存到本地文件')
 }
 
 function onImportClick() {
@@ -209,6 +212,7 @@ const shortcutsList = [
   { keys: '点击空白', desc: '取消选中 / 取消高亮' },
   { keys: '右键画布', desc: '打开菜单：创建物品/加工动作节点' },
   { keys: '右键节点', desc: '打开菜单：属性修改 / 复制 / 删除' },
+  { keys: 'Ctrl/⌘ + S', desc: '保存到本地文件（下载 .json）' },
   { keys: 'Ctrl + A', desc: '全选所有节点' },
   { keys: 'Ctrl + C', desc: '复制选中节点' },
   { keys: 'Ctrl + V', desc: '粘贴（复制生成的新节点）' },
@@ -225,8 +229,7 @@ const shortcutsList = [
       <span class="brand">🎮 游戏配方可视化编辑器</span>
       <div class="tool-actions">
         <el-button size="small" type="primary" @click="onAddRecipe">+ 添加配方</el-button>
-        <el-button size="small" @click="onSave">保存校验</el-button>
-        <el-button size="small" type="success" @click="onExport">导出 JSON</el-button>
+        <el-button size="small" type="primary" @click="onSaveFile">💾 保存到本地文件</el-button>
         <el-button size="small" @click="onImportClick">导入 JSON</el-button>
         <el-button size="small" type="danger" plain @click="onReset">清空</el-button>
         <el-button size="small" @click="shortcutsVisible = true">⌨ 快捷键说明</el-button>

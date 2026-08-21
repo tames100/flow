@@ -7,13 +7,13 @@ import { useImagePreview } from './useImagePreview'
  * useCanvasShortcuts —— 画布快捷键。
  *
  * - 左键拖拽：平移画布（Vue Flow 默认）
- * - 右键点击空白画布：选中全部节点
  * - Delete / Backspace：删除选中的节点或连线
  * - Ctrl/Cmd + A：全选画布节点（及连线）
  * - Ctrl/Cmd + C：复制选中节点   Ctrl/Cmd + V：粘贴（偏移放置）
+ * - Ctrl/Cmd + S：保存（取消浏览器默认行为）
  * - Esc：取消选中 / 取消高亮
  */
-export function useCanvasShortcuts(opts: { onEscape: () => void }) {
+export function useCanvasShortcuts(opts: { onEscape: () => void; onSave: () => void }) {
   const { getNodes, getEdges, removeNodes, removeEdges, updateNode, updateEdge } = useVueFlow()
   const { duplicateNode, persist } = useRecipeGraph()
   const { visible: previewVisible } = useImagePreview()
@@ -72,6 +72,13 @@ export function useCanvasShortcuts(opts: { onEscape: () => void }) {
       getNodes.value.forEach((n) => updateNode(n.id, { selected: false } as any))
       getEdges.value.forEach((ed) => updateEdge(ed as any, { selected: false } as any))
       opts.onEscape()
+      return
+    }
+
+    // Ctrl/Cmd + S 保存（取消浏览器默认保存网页行为）
+    if (mod && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault()
+      opts.onSave()
     }
   }
 
