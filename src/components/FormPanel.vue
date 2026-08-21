@@ -128,39 +128,12 @@ function submit() {
     <el-form label-position="top" size="default">
       <div class="section-label">输入物品（支持上传图 / 拖拽 / 粘贴）</div>
       <div v-for="(inp, idx) in form.inputs" :key="idx" class="input-row">
-        <el-input
-          v-model="inp.name"
-          placeholder="物品名称"
-          clearable
-          @focus="pasteTarget = idx"
-        />
-        <el-button
-          v-if="inp.image"
-          link
-          type="primary"
-          size="small"
-          @click="inp.image = ''"
-          >清除图</el-button
-        >
-        <el-button link type="success" size="small" @click="pickInputImage(idx)">
-          {{ inp.image ? '换图' : '上传图' }}
-        </el-button>
-        <el-button
-          v-if="form.inputs.length > 1"
-          link
-          type="danger"
-          size="small"
-          @click="removeInputRow(idx)"
-          >删除</el-button
-        >
-        <div
-          class="drop-zone"
-          :class="{ active: pasteTarget === idx }"
-          @click="pickInputImage(idx)"
-          @mouseenter="pasteTarget = idx"
-          @drop="onDrop(idx, $event)"
-          @dragover.prevent
-        >
+        <el-input v-model="inp.name" placeholder="物品名称" clearable @focus="pasteTarget = idx" />
+        <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
+        <el-button v-if="form.inputs.length > 1" link type="danger" size="small"
+          @click="removeInputRow(idx)">删除</el-button>
+        <div class="drop-zone" :class="{ active: pasteTarget === idx }" @click="pickInputImage(idx)"
+          @mouseenter="pasteTarget = idx" @drop="onDrop(idx, $event)" @dragover.prevent>
           <img v-if="inp.image" :src="inp.image" class="thumb" />
           <span v-else class="drop-hint">点击/拖拽/粘贴</span>
         </div>
@@ -168,34 +141,17 @@ function submit() {
       <el-button text type="primary" @click="addInputRow">+ 添加输入物品</el-button>
 
       <div class="section-label" style="margin-top: 14px">加工动作</div>
-      <el-select
-        v-model="form.action"
-        style="width: 100%"
-        filterable
-        allow-create
-        default-first-option
-        placeholder="选择或输入自定义动作"
-      >
+      <el-select v-model="form.action" style="width: 100%" filterable allow-create default-first-option
+        placeholder="选择或输入自定义动作">
         <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
       </el-select>
 
       <div class="section-label" style="margin-top: 14px">
         输出产物（支持上传图 / 拖拽 / 粘贴）
       </div>
-      <el-input
-        v-model="form.output.name"
-        placeholder="产物名称"
-        clearable
-        @focus="pasteTarget = 'output'"
-      />
-      <div
-        class="drop-zone output"
-        :class="{ active: pasteTarget === 'output' }"
-        @click="pickOutputImage"
-        @mouseenter="pasteTarget = 'output'"
-        @drop="onDrop('output', $event)"
-        @dragover.prevent
-      >
+      <el-input v-model="form.output.name" placeholder="产物名称" clearable @focus="pasteTarget = 'output'" />
+      <div class="drop-zone output" :class="{ active: pasteTarget === 'output' }" @click="pickOutputImage"
+        @mouseenter="pasteTarget = 'output'" @drop="onDrop('output', $event)" @dragover.prevent>
         <img v-if="form.output.image" :src="form.output.image" class="thumb" />
         <span v-else class="drop-hint">点击/拖拽/粘贴图片</span>
       </div>
@@ -213,16 +169,19 @@ function submit() {
   height: 100%;
   overflow-y: auto;
 }
+
 .panel-title {
   margin: 0 0 12px;
   font-size: 16px;
 }
+
 .section-label {
   font-size: 13px;
   font-weight: 600;
   color: #606266;
   margin-bottom: 6px;
 }
+
 .input-row {
   display: flex;
   align-items: center;
@@ -230,6 +189,7 @@ function submit() {
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
+
 .thumb {
   width: 34px;
   height: 34px;
@@ -237,6 +197,7 @@ function submit() {
   border-radius: 6px;
   border: 1px solid #dcdfe6;
 }
+
 .drop-zone {
   width: 34px;
   height: 34px;
@@ -248,15 +209,18 @@ function submit() {
   cursor: pointer;
   overflow: hidden;
 }
+
 .drop-zone.output {
   width: 100%;
   height: 44px;
   margin-top: 6px;
 }
+
 .drop-zone.active {
   border-color: #409eff;
   background: #ecf5ff;
 }
+
 .drop-hint {
   font-size: 10px;
   color: #c0c4cc;
