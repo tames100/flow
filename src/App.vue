@@ -25,11 +25,12 @@ import {
   useContextMenu,
   useImageCrop,
   type RecipeGraphData,
+  type SourceMachine,
 } from './composables'
 
 const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStart, onNodeDrag, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode, updateNode, getNodes } =
   useVueFlow()
-const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel } =
+const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel, parseSourceRecipe, importSourceRecipes } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
 const { open: openContextMenu } = useContextMenu()
@@ -279,14 +280,40 @@ function onImportClick() {
   importInput.value?.click()
 }
 
+/** 源配方（Minecraft 配方 JSON）导入选择对话框状态 */
+const sourceDialogVisible = ref(false)
+const sourceData = ref<SourceMachine | null>(null)
+const recipeChecked = ref<Record<string, boolean>>({})
+const sourceCheckedNames = computed<string[]>({
+  get: () =>
+    sourceData.value?.recipes.filter((r) => recipeChecked.value[r.name]).map((r) => r.name) ?? [],
+  set: (names) => {
+    sourceData.value?.recipes.forEach((r) => (recipeChecked.value[r.name] = names.includes(r.name)))
+  },
+})
+const allSourceChecked = computed(() => {
+  const s = sourceData.value
+  return !!s && s.recipes.length > 0 && s.recipes.every((r) => recipeChecked.value[r.name])
+})
+
 function onImportChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   const reader = new FileReader()
   reader.onload = () => {
     try {
-      const data = JSON.parse(reader.result as string) as RecipeGraphData
-      importJSON(data)
+      const data = JSON.parse(reader.result as string)
+      // 1) 尝试识别 Minecraft 配方 JSON（如「大容量发酵罐配方.json」）
+      const src = parseSourceRecipe(data)
+      if (src) {
+        sourceData.value = src
+        recipeChecked.value = {}
+        src.recipes.forEach((r) => (recipeChecked.value[r.name] = true))
+        sourceDialogVisible.value = true
+        return
+      }
+      // 2) 否则按本应用导出的图数据格式导入
+      importJSON(data as RecipeGraphData)
       clearHighlight()
       selectedNodeId.value = null
       selectedEdgeId.value = null
@@ -297,6 +324,28 @@ function onImportChange(e: Event) {
   }
   reader.readAsText(file)
     ; (e.target as HTMLInputElement).value = ''
+}
+
+function onSourceCheckAll() {
+  const allChecked = sourceData.value?.recipes.every((r) => recipeChecked.value[r.name])
+  sourceData.value?.recipes.forEach((r) => (recipeChecked.value[r.name] = !allChecked))
+}
+
+function onSourceImport() {
+  if (!sourceData.value) return
+  const selected = sourceData.value.recipes
+    .filter((r) => recipeChecked.value[r.name])
+    .map((r) => r.name)
+  const { nodes, edges } = importSourceRecipes(sourceData.value, selected)
+  sourceDialogVisible.value = false
+  clearHighlight()
+  if (!nodes.length) {
+    ElMessage.warning('未选择任何配方，未导入节点')
+    return
+  }
+  selectedNodeId.value = null
+  selectedEdgeId.value = null
+  ElMessage.success(`已导入 ${nodes.length} 个节点、${edges.length} 条连线`)
 }
 
 function onReset() {
@@ -472,6 +521,29 @@ const shortcutsList = [
       </el-table>
     </el-dialog>
 
+    <!-- 源配方（Minecraft 配方 JSON）导入选择弹窗 -->
+    <el-dialog v-model="sourceDialogVisible" title="选择要导入的配方" width="720px" append-to-body
+      :close-on-click-modal="false">
+      <div v-if="sourceData" class="source-meta">
+        <div class="source-name">{{ sourceData.machine }}</div>
+        <div v-if="sourceData.description" class="source-desc">{{ sourceData.description }}</div>
+        <div class="source-count">共 {{ sourceData.recipes.length }} 条配方，相同物品自动合并为一个节点。</div>
+      </div>
+      <el-checkbox :model-value="allSourceChecked" @change="onSourceCheckAll">全选 / 全不选</el-checkbox>
+      <el-scrollbar max-height="320px" class="source-list">
+        <el-checkbox-group v-model="sourceCheckedNames">
+          <el-checkbox v-for="r in sourceData?.recipes ?? []" :key="r.name" :label="r.name" class="source-item">
+            <span class="source-item-name">{{ r.name }}</span>
+            <span class="source-item-cat">{{ r.category ? '分类：' + r.category : '' }}</span>
+          </el-checkbox>
+        </el-checkbox-group>
+      </el-scrollbar>
+      <template #footer>
+        <el-button @click="sourceDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="onSourceImport">导入所选配方</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 配方录入弹窗 -->
     <el-dialog v-model="formDialogVisible" title="配方录入" width="980px" top="40px" class="recipe-dialog"
       :close-on-click-modal="false" append-to-body>
@@ -612,6 +684,54 @@ const shortcutsList = [
   padding: 1px 6px;
   font-size: 12px;
   white-space: nowrap;
+}
+
+/* 源配方导入选择弹窗 */
+.source-meta {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f5f7fa;
+  margin-bottom: 10px;
+}
+.source-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #303133;
+}
+.source-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.source-count {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #606266;
+}
+.source-list {
+  margin-top: 10px;
+  padding: 4px 8px;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+}
+.source-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-right: 0;
+  padding: 4px 0;
+}
+.source-item-name {
+  font-size: 13px;
+  color: #303133;
+}
+.source-item-cat {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 
 /* 配方录入弹窗：顶部与工具栏底部对齐（top 通过 prop 传入，内联变量优先级高于 class），限制弹窗高度保证视口内完整显示全部内容 */

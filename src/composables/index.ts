@@ -16,6 +16,7 @@ export * from './useImageCrop'
 export { DEFAULT_ACTIONS } from '../types'
 export type {
   NodeKind,
+  ItemAttribute,
   ItemNodeData,
   ActionNodeData,
   RecipeNodeData,

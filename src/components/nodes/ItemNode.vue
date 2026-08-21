@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { useContextMenu, type ItemNodeData } from '../../composables'
+import { useContextMenu, isImageIcon, type ItemNodeData } from '../../composables'
 
 const props = defineProps<{
   id: string
@@ -12,6 +12,12 @@ const { open: openContextMenu } = useContextMenu()
 
 const hasImage = computed(() => !!props.data.image)
 const displayName = computed(() => props.data.label || '未命名物品')
+/** 过滤掉名称与值均为空的属性行 */
+const displayAttrs = computed(() =>
+  (props.data.attributes ?? []).filter(
+    (a) => (a.name ?? '').trim() || String(a.value ?? '').trim(),
+  ),
+)
 
 function onContextMenu(e: MouseEvent) {
   openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'item' })
@@ -36,6 +42,14 @@ function onContextMenu(e: MouseEvent) {
       </div>
       <span v-if="data.showLabel" class="item-label">{{ displayName }}</span>
       <div v-if="data.description" class="node-desc" :title="data.description">{{ data.description }}</div>
+      <!-- 物品属性：图标 + 名称 + 值 + 说明（图标与说明非必选） -->
+      <div v-if="displayAttrs.length" class="node-attrs">
+        <div v-for="a in displayAttrs" :key="`${a.name}-${a.value}`" class="node-attr" :title="a.desc || a.name">
+          <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
+          <span v-else-if="a.icon" class="attr-icon">{{ a.icon }}</span>
+          <span class="attr-text">{{ a.name }}: {{ a.value }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- 输出连接点（物品作为产物时位于右侧） -->
@@ -125,6 +139,43 @@ function onContextMenu(e: MouseEvent) {
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 物品属性：图标 + 名称:值 + 说明 */
+.node-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  max-width: 170px;
+}
+.node-attr {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #606266;
+  background: #f4f7fb;
+  border: 1px solid #e1e8f0;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.node-attr .attr-icon {
+  font-size: 12px;
+}
+.node-attr .attr-icon-img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.node-attr .attr-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-node.no-label {

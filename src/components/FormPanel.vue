@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
-import { useRecipeGraph, useActionTypes, useImageUpload, useImageCrop, type RecipeForm } from '../composables'
+import {
+  useRecipeGraph,
+  useActionTypes,
+  useImageUpload,
+  useImageCrop,
+  fileToDataURL,
+  isImageIcon,
+  type ItemAttribute,
+  type RecipeForm,
+} from '../composables'
 import { DEFAULT_EXTRAS, DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 
 const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes } = useRecipeGraph()
@@ -10,7 +19,7 @@ const { open: openCrop, state: cropState } = useImageCrop()
 const emit = defineEmits<{ submitted: [] }>()
 
 const form = reactive<RecipeForm>({
-  inputs: [{ name: '', image: '', quantity: 1, description: '' }],
+  inputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [] }],
   action: '合成',
   actionImage: '',
   actionDescription: '',
@@ -18,8 +27,78 @@ const form = reactive<RecipeForm>({
   actionOutputUnit: DEFAULT_UNIT,
   actionRefId: undefined,
   reuseActionImage: true,
-  outputs: [{ name: '', image: '', quantity: 1, description: '' }],
+  outputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [] }],
 })
+
+/** 属性编辑区展开状态：`in${idx}` / `out${idx}` */
+const attrExpanded = ref<Record<string, boolean>>({})
+
+function toggleAttrArea(key: string) {
+  attrExpanded.value[key] = !attrExpanded.value[key]
+}
+
+/** 确保属性数组存在 */
+function ensureAttrs(arr: { attributes?: ItemAttribute[] }) {
+  if (!arr.attributes) arr.attributes = []
+}
+
+function addInputAttr(idx: number) {
+  const row = form.inputs[idx]
+  ensureAttrs(row)
+  row.attributes!.push({ icon: '', name: '', value: '', desc: '' })
+}
+
+function removeInputAttr(idx: number, aidx: number) {
+  form.inputs[idx].attributes?.splice(aidx, 1)
+}
+
+function addOutputAttr(idx: number) {
+  const row = form.outputs[idx]
+  ensureAttrs(row)
+  row.attributes!.push({ icon: '', name: '', value: '', desc: '' })
+}
+
+function removeOutputAttr(idx: number, aidx: number) {
+  form.outputs[idx].attributes?.splice(aidx, 1)
+}
+
+// ---- 属性图标：支持本地上传 / 剪贴板粘贴 / 直接输入 emoji 或 URL ----
+const attrIconFileInput = ref<HTMLInputElement | null>(null)
+const attrIconTarget = ref<ItemAttribute | null>(null)
+
+/** 点击图标预览 → 选择本地图片 */
+function pickAttrIcon(a: ItemAttribute) {
+  attrIconTarget.value = a
+  attrIconFileInput.value?.click()
+}
+
+async function onAttrIconFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = ''
+  if (!f || !attrIconTarget.value) return
+  try {
+    attrIconTarget.value.icon = await fileToDataURL(f)
+  } catch (err: any) {
+    ElMessage.warning(err?.message ?? '图片读取失败')
+  }
+}
+
+/** 在图标输入框中粘贴图片 */
+function onAttrIconPaste(a: ItemAttribute, e: ClipboardEvent) {
+  const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
+    i.type.startsWith('image/'),
+  )
+  if (!item) return
+  e.preventDefault()
+  const f = item.getAsFile()
+  if (!f) return
+  fileToDataURL(f)
+    .then((url) => {
+      a.icon = url
+    })
+    .catch((err: any) => ElMessage.warning(err?.message ?? '图片读取失败'))
+}
 
 const inputUpload = useImageUpload()
 const outputUpload = useImageUpload()
@@ -82,7 +161,7 @@ onMounted(() => window.addEventListener('paste', onPaste))
 onBeforeUnmount(() => window.removeEventListener('paste', onPaste))
 
 function addInputRow() {
-  form.inputs.push({ name: '', image: '', quantity: 1, description: '' })
+  form.inputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [] })
 }
 
 function removeInputRow(idx: number) {
@@ -94,7 +173,7 @@ function removeInputRow(idx: number) {
 }
 
 function addOutputRow() {
-  form.outputs.push({ name: '', image: '', quantity: 1, description: '' })
+  form.outputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [] })
 }
 
 function removeOutputRow(idx: number) {
@@ -160,12 +239,19 @@ function submit() {
   // 新增的自定义加工动作持久化到下拉列表
   addAction(form.action)
 
+  /** 过滤空属性行（名称与值都为空的行不保留） */
+  const cleanAttrs = (list?: ItemAttribute[]) =>
+    (list ?? []).filter(
+      (a) => (a.name ?? '').trim() || String(a.value ?? '').trim(),
+    )
+
   addRecipeFromForm({
     inputs: validInputs.map((i) => ({
       name: i.name.trim(),
       image: i.image,
       refId: i.refId,
       description: i.description ?? '',
+      attributes: cleanAttrs(i.attributes),
     })),
     action: form.action,
     actionImage: form.actionImage,
@@ -179,6 +265,7 @@ function submit() {
       image: o.image,
       quantity: o.quantity,
       description: o.description ?? '',
+      attributes: cleanAttrs(o.attributes),
     })),
   })
 
@@ -198,8 +285,8 @@ function submit() {
   emit('submitted')
 
   // 重置表单（各保留一行）
-  form.inputs = [{ name: '', image: '', quantity: 1, description: '' }]
-  form.outputs = [{ name: '', image: '', quantity: 1, description: '' }]
+  form.inputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [] }]
+  form.outputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [] }]
   form.actionImage = ''
   form.actionDescription = ''
   form.actionExtra = ''
@@ -254,6 +341,36 @@ function submit() {
               class="desc-input"
               @focus="pasteTarget = `in${idx}`"
             />
+            <!-- 物品属性（可折叠）：图标 + 名称 + 值 + 说明 -->
+            <div class="attr-block">
+              <div class="attr-toggle" @click="toggleAttrArea(`in${idx}`)">
+                <span class="attr-toggle-text">属性（{{ inp.attributes?.length ?? 0 }}）</span>
+                <span class="attr-toggle-arrow">{{ attrExpanded[`in${idx}`] ? '▾' : '▸' }}</span>
+              </div>
+              <div v-if="attrExpanded[`in${idx}`]" class="attr-list">
+                <div v-for="(a, aidx) in inp.attributes" :key="aidx" class="attr-item">
+                  <div class="attr-item-main">
+                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标（也可粘贴图片）' : '点击上传图标（也可粘贴图片）'"
+                      @click="pickAttrIcon(a)">
+                      <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
+                      <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
+                    </span>
+                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon"
+                      @paste="onAttrIconPaste(a, $event)" />
+                    <el-input v-model="a.name" placeholder="名称" size="small" class="attr-name" />
+                    <el-input v-model="a.value" placeholder="值" size="small" class="attr-value" />
+                    <el-button link type="danger" size="small" @click="removeInputAttr(idx, aidx)">删</el-button>
+                  </div>
+                  <el-input
+                    v-model="a.desc"
+                    placeholder="说明（可选）"
+                    size="small"
+                    class="attr-desc"
+                  />
+                </div>
+                <el-button text type="primary" size="small" @click="addInputAttr(idx)">+ 添加属性</el-button>
+              </div>
+            </div>
             <div class="row-actions">
               <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
               <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
@@ -379,6 +496,36 @@ function submit() {
               class="desc-input"
               style="margin-top: 6px"
             />
+            <!-- 产物属性（可折叠）：图标 + 名称 + 值 + 说明 -->
+            <div class="attr-block" style="margin-top: 6px">
+              <div class="attr-toggle" @click="toggleAttrArea(`out${idx}`)">
+                <span class="attr-toggle-text">属性（{{ out.attributes?.length ?? 0 }}）</span>
+                <span class="attr-toggle-arrow">{{ attrExpanded[`out${idx}`] ? '▾' : '▸' }}</span>
+              </div>
+              <div v-if="attrExpanded[`out${idx}`]" class="attr-list">
+                <div v-for="(a, aidx) in out.attributes" :key="aidx" class="attr-item">
+                  <div class="attr-item-main">
+                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标（也可粘贴图片）' : '点击上传图标（也可粘贴图片）'"
+                      @click="pickAttrIcon(a)">
+                      <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
+                      <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
+                    </span>
+                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon"
+                      @paste="onAttrIconPaste(a, $event)" />
+                    <el-input v-model="a.name" placeholder="名称" size="small" class="attr-name" />
+                    <el-input v-model="a.value" placeholder="值" size="small" class="attr-value" />
+                    <el-button link type="danger" size="small" @click="removeOutputAttr(idx, aidx)">删</el-button>
+                  </div>
+                  <el-input
+                    v-model="a.desc"
+                    placeholder="说明（可选）"
+                    size="small"
+                    class="attr-desc"
+                  />
+                </div>
+                <el-button text type="primary" size="small" @click="addOutputAttr(idx)">+ 添加属性</el-button>
+              </div>
+            </div>
             <div class="row-actions">
               <el-button v-if="out.image" link type="primary" size="small" @click="out.image = ''">清除图</el-button>
               <el-button link type="danger" size="small" @click="removeOutputRow(idx)">删除</el-button>
@@ -403,6 +550,8 @@ function submit() {
         生成配方节点
       </el-button>
     </el-form>
+    <input ref="attrIconFileInput" type="file" accept="image/*" style="display: none"
+      @change="onAttrIconFileChange" />
   </div>
 </template>
 
@@ -494,5 +643,91 @@ function submit() {
   height: 20px;
   object-fit: cover;
   border-radius: 4px;
+}
+/* 物品属性编辑区 */
+.attr-block {
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.attr-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  cursor: pointer;
+  background: #f5f7fa;
+  font-size: 12px;
+  color: #606266;
+}
+.attr-toggle:hover {
+  background: #ecf5ff;
+}
+.attr-toggle-arrow {
+  font-size: 10px;
+  color: #909399;
+}
+.attr-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+}
+.attr-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px dashed #e4e7ed;
+  border-radius: 4px;
+}
+.attr-item-main {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.attr-icon-box {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #c0c4cc;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  background: #fff;
+}
+.attr-icon-box:hover {
+  border-color: #409eff;
+}
+.attr-icon-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.attr-icon-text {
+  font-size: 14px;
+  line-height: 1;
+}
+.attr-icon {
+  width: 56px;
+  flex-shrink: 0;
+}
+.attr-name {
+  flex: 1;
+  min-width: 0;
+}
+.attr-value {
+  flex: 1;
+  min-width: 0;
+}
+.attr-desc {
+  width: 100%;
+}
+.attr-item-main :deep(.el-input__inner) {
+  font-size: 12px;
 }
 </style>

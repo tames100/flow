@@ -1,31 +1,37 @@
 import { ref } from 'vue'
 
+/** 限制大小，避免 localStorage 溢出（默认 1.5MB） */
+const MAX_SIZE = 1.5 * 1024 * 1024
+
+/** 将图片 File 读取为 dataURL（供属性图标等场景复用） */
+export function fileToDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('请选择图片文件'))
+      return
+    }
+    if (file.size > MAX_SIZE) {
+      reject(new Error('图片过大，请控制在 1.5MB 以内'))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+/** 判断图标值是否为图片（dataURL / http(s) / blob），否则按文字/emoji 展示 */
+export function isImageIcon(value: string): boolean {
+  return /^(data:image\/|https?:\/\/|blob:)/i.test(value)
+}
+
 /**
  * useImageUpload —— 统一处理图片来源（本地文件 / 拖拽 / 剪贴板）→ dataURL。
  */
 export function useImageUpload() {
   const image = ref('')
   const fileInput = ref<HTMLInputElement | null>(null)
-
-  /** 限制大小，避免 localStorage 溢出（默认 1.5MB） */
-  const MAX_SIZE = 1.5 * 1024 * 1024
-
-  function fileToDataURL(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      if (!file.type.startsWith('image/')) {
-        reject(new Error('请选择图片文件'))
-        return
-      }
-      if (file.size > MAX_SIZE) {
-        reject(new Error('图片过大，请控制在 1.5MB 以内'))
-        return
-      }
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = () => reject(reader.error)
-      reader.readAsDataURL(file)
-    })
-  }
 
   /** 处理单个 File（拖拽 / 文件选择共用） */
   async function handleFile(file: File | undefined | null) {

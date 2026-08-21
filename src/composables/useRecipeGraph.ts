@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useVueFlow, MarkerType } from '@vue-flow/core'
 import type {
+  ItemAttribute,
   MaterialDemand,
   RecipeEdge,
   RecipeForm,
@@ -14,6 +15,53 @@ import { useActionTypes } from './useActionTypes'
 const STORAGE_KEY = 'vflow_graph_data'
 
 let nodeSeq = 1
+
+/** 源配方 JSON 中的单个原料 / 产物（物品或流体） */
+export interface SourceIngredient {
+  type: string
+  id: string
+  quantity: number
+}
+
+/** 源配方 JSON 中的一条配方 */
+export interface SourceRecipe {
+  category?: string
+  name: string
+  inputs: SourceIngredient[]
+  output: SourceIngredient
+  heated?: boolean
+  timeTicks?: number
+  timeSeconds?: number
+}
+
+/** 源配方 JSON 解析结果（一台机器及其全部配方） */
+export interface SourceMachine {
+  machine: string
+  description: string
+  recipes: SourceRecipe[]
+}
+
+/** 属性追踪明细行（某个基本原料对目标属性值的贡献） */
+export interface AttributeTraceItem {
+  id: string
+  name: string
+  qty: number
+  unit?: string
+  attr?: ItemAttribute
+  /** 数值贡献 = 属性值 × 需求量；属性值非数字时为 null */
+  contribution: number | null
+}
+
+/** 属性追踪计算结果 */
+export interface AttributeTraceResult {
+  name: string
+  /** 目标产物自身定义的同名属性 */
+  targetAttr?: ItemAttribute
+  /** 各基本原料贡献明细 */
+  items: AttributeTraceItem[]
+  /** 计算合计（全部贡献可数值化时有值） */
+  total: number | null
+}
 
 function genId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${nodeSeq++}`
@@ -143,6 +191,7 @@ export function useRecipeGraph() {
     showLabel = true,
     quantity = 1,
     description = '',
+    attributes: ItemAttribute[] = [],
   ): RecipeNode {
     return {
       id: genId('item'),
@@ -155,6 +204,7 @@ export function useRecipeGraph() {
         showLabel,
         quantity: quantity || 1,
         description: description || undefined,
+        attributes: attributes.length ? attributes : undefined,
       },
     }
   }
@@ -243,9 +293,26 @@ export function useRecipeGraph() {
    * - 数量展示在「输入 -> 动作」的连线上（数量为 1 时不显示）。
    * - 布局：输入在左列、动作在中间列、输出在右列（按行纵向排列，动作纵向居中）。
    */
+  /**
+   * 计算新节点的放置锚点：取当前画布中最右下（x+y 最大）的节点，
+   * 新配方在其右下方生成，避免远离当前内容区域。
+   */
+  function getPlacementAnchor(): { x: number; y: number } {
+    const ns = getNodes.value
+    if (!ns.length) return { x: 80, y: 80 }
+    let anchor = ns[0]
+    for (const n of ns) {
+      if (n.position.x + n.position.y > anchor.position.x + anchor.position.y) {
+        anchor = n
+      }
+    }
+    return { x: anchor.position.x, y: anchor.position.y }
+  }
+
   function addRecipeFromForm(form: RecipeForm) {
-    const baseX = 80 + (nodes.value.length % 3) * 320
-    const baseY = 80 + Math.floor(nodes.value.length / 3) * 320
+    const anchor = getPlacementAnchor()
+    const baseX = anchor.x + 340
+    const baseY = anchor.y
 
     const createdNodes: RecipeNode[] = []
 
@@ -264,6 +331,7 @@ export function useRecipeGraph() {
         true,
         1,
         inp.description,
+        inp.attributes ?? [],
       )
       createdNodes.push(n)
       return { node: n, quantity: inp.quantity ?? 1 }
@@ -278,6 +346,7 @@ export function useRecipeGraph() {
         true,
         1,
         out.description,
+        out.attributes ?? [],
       )
       // 输出数量记录在输出物品节点上（用于动作 -> 输出 连线展示）
       ;(n.data as any).quantity = out.quantity ?? 1
@@ -629,6 +698,236 @@ export function useRecipeGraph() {
       }))
   }
 
+  /**
+   * 解析 Minecraft 配方 JSON（如「大容量发酵罐配方.json」）。
+   * 支持结构：{ "机器名": { "说明": "...", "配方列表": [ { "配方名", "分类", "输入", "输出", "加热", "处理时间(秒)" } ] } }
+   */
+  function parseSourceRecipe(json: unknown): SourceMachine | null {
+    if (!json || typeof json !== 'object') return null
+    const root = json as Record<string, unknown>
+    const machineKey = Object.keys(root).find(
+      (k) => root[k] && typeof root[k] === 'object' && Array.isArray((root[k] as any)['配方列表']),
+    )
+    if (!machineKey) return null
+    const body = root[machineKey] as Record<string, any>
+    const list = (body['配方列表'] ?? []) as Record<string, any>[]
+    const toIngredient = (raw: any): SourceIngredient | null => {
+      if (!raw || typeof raw !== 'object') return null
+      const id = String(raw['id'] ?? '')
+      if (!id) return null
+      return {
+        type: String(raw['类型'] ?? '物品'),
+        id,
+        quantity: Math.max(1, Number(raw['数量'] ?? 1) || 1),
+      }
+    }
+    const recipes: SourceRecipe[] = list
+      .map((r): SourceRecipe | null => {
+        const inputs = (Array.isArray(r['输入']) ? r['输入'] : [])
+          .map(toIngredient)
+          .filter((x): x is SourceIngredient => !!x)
+        const output = toIngredient(r['输出'])
+        if (!inputs.length || !output || !r['配方名']) return null
+        return {
+          category: r['分类'] ? String(r['分类']) : undefined,
+          name: String(r['配方名']),
+          inputs,
+          output,
+          heated: Boolean(r['加热']),
+          timeTicks: r['处理时间(ticks)'] ? Number(r['处理时间(ticks)']) : undefined,
+          timeSeconds: r['处理时间(秒)'] ? Number(r['处理时间(秒)']) : undefined,
+        }
+      })
+      .filter((x): x is SourceRecipe => !!x)
+    if (!recipes.length) return null
+    return { machine: machineKey, description: String(body['说明'] ?? ''), recipes }
+  }
+
+  /** 将 id 转成可读名称（取冒号后段，下划线转空格） */
+  function nameFromId(id: string): string {
+    const short = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id
+    return short.replace(/_/g, ' ')
+  }
+
+  /** 根据原料/产物类型得到单位（流体→ml，其他→默认单位） */
+  function unitOfIngredient(ing: SourceIngredient): string {
+    return ing.type === '流体' ? 'ml' : DEFAULT_UNIT
+  }
+
+  /**
+   * 将解析出的源配方导入画布：
+   * - 每个配方生成一个动作节点（名称为配方名）与若干输入物品节点、一个输出物品节点；
+   * - 相同 id + 类型的物品节点自动复用；
+   * - 布局：每个配方横向排布（输入在左、动作居中、输出在右），配方间纵向错开。
+   */
+  function importSourceRecipes(src: SourceMachine, selectedNames?: string[]) {
+    const names = selectedNames && selectedNames.length ? new Set(selectedNames) : null
+    const createdNodes: RecipeNode[] = []
+    const newEdges: RecipeEdge[] = []
+    const itemCache = new Map<string, RecipeNode>()
+
+    const anchor = getPlacementAnchor()
+    const IN_X = anchor.x + 340
+    const ACTION_X = anchor.x + 600
+    const OUT_X = anchor.x + 860
+    let cursorY = anchor.y
+
+    const getOrCreateItem = (ing: SourceIngredient, x: number, y: number): RecipeNode => {
+      const key = `${ing.type}:${ing.id}`
+      const cached = itemCache.get(key)
+      if (cached) return cached
+      const n = createItemNode(
+        nameFromId(ing.id),
+        '',
+        { x, y },
+        true,
+        1,
+        `来源：${src.machine}\n类型：${ing.type}\n原始 id：${ing.id}`,
+        [],
+      )
+      itemCache.set(key, n)
+      createdNodes.push(n)
+      return n
+    }
+
+    src.recipes.forEach((recipe) => {
+      if (names && !names.has(recipe.name)) return
+      const inCount = recipe.inputs.length
+      const actionY = cursorY + ((Math.max(inCount, 1) - 1) * 90) / 2
+      const actionNode = createActionNode(
+        recipe.name,
+        { x: ACTION_X, y: actionY },
+        '',
+        [
+          recipe.category ? `分类：${recipe.category}` : '',
+          recipe.heated ? '需要加热' : '',
+          recipe.timeSeconds ? `处理时间：${recipe.timeSeconds} 秒` : '',
+        ]
+          .filter(Boolean)
+          .join('\n') || undefined,
+        '',
+        unitOfIngredient(recipe.output),
+      )
+      createdNodes.push(actionNode)
+
+      // 输入边
+      recipe.inputs.forEach((ing, i) => {
+        const item = getOrCreateItem(ing, IN_X, cursorY + i * 90)
+        const unit = unitOfIngredient(ing)
+        newEdges.push({
+          id: genId('e'),
+          source: item.id,
+          target: actionNode.id,
+          class: 'recipe-edge',
+          animated: true,
+          style: { stroke: '#409eff', strokeWidth: 2, strokeDasharray: '8 4' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#409eff', width: 16, height: 16 },
+          unit,
+          label: edgeLabel(ing.quantity, unit),
+          labelStyle: { fill: '#409eff', fontWeight: 700, fontSize: '12px' },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+          labelBgPadding: [4, 2] as [number, number],
+          labelBgBorderRadius: 4,
+        })
+      })
+
+      // 输出边
+      const out = getOrCreateItem(recipe.output, OUT_X, actionY)
+      ;(out.data as any).quantity = recipe.output.quantity
+      const outUnit = unitOfIngredient(recipe.output)
+      newEdges.push({
+        id: genId('e'),
+        source: actionNode.id,
+        target: out.id,
+        class: 'recipe-edge',
+        animated: true,
+        style: { stroke: '#e6a23c', strokeWidth: 2, strokeDasharray: '8 4' },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#e6a23c', width: 16, height: 16 },
+        unit: outUnit,
+        label: edgeLabel(recipe.output.quantity, outUnit),
+        labelStyle: { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' },
+        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 4,
+      })
+
+      cursorY += Math.max(inCount, 1) * 90 + 130
+    })
+
+    if (!createdNodes.length) return { nodes: [], edges: [] }
+    addNodes(createdNodes as any)
+    addEdges(newEdges as any)
+    nodes.value = [...nodes.value, ...(createdNodes as any[])] as RecipeNode[]
+    edges.value = [...edges.value, ...(newEdges as any[])] as RecipeEdge[]
+    persist()
+    return { nodes: createdNodes, edges: newEdges }
+  }
+
+  /**
+   * 收集目标产物及其全部上游物品节点上出现过的属性名（去重），
+   * 供属性面板的「展示属性」多选使用。
+   */
+  function getTraceAttributeNames(targetId: string): string[] {
+    const names = new Set<string>()
+    const seen = new Set<string>()
+    const stack = [targetId]
+    while (stack.length) {
+      const id = stack.pop()!
+      if (seen.has(id)) continue
+      seen.add(id)
+      const n = findNode(id)
+      if (n?.data?.kind !== 'item') continue
+      for (const a of (n.data as any)?.attributes ?? []) {
+        if (a?.name) names.add(String(a.name))
+      }
+      // 沿上游收集：生产该物品的动作节点的输入物品
+      for (const e of getEdges.value as any[]) {
+        if (e.target !== id) continue
+        const producer = findNode(e.source)
+        if (producer?.data?.kind !== 'action') continue
+        for (const ie of getEdges.value as any[]) {
+          if (ie.target === producer.id) stack.push(ie.source)
+        }
+      }
+    }
+    return [...names]
+  }
+
+  /**
+   * 属性追踪计算：目标产物的某个属性，沿上游由各基本原料同名属性推算。
+   * 例如：樱桃酒「金币」=4，其基本原料樱桃「金币」=2 × 需求 2 = 4。
+   */
+  function computeAttributeTrace(
+    targetId: string,
+    targetQty: number,
+    attrName: string,
+  ): AttributeTraceResult | null {
+    const target = findNode(targetId)
+    if (!target) return null
+    const targetAttr = ((target.data as any)?.attributes ?? []).find(
+      (a: ItemAttribute) => a.name === attrName,
+    ) as ItemAttribute | undefined
+    const materials = computeBasicMaterials(targetId, targetQty)
+    const items: AttributeTraceItem[] = materials.map((m) => {
+      const n = findNode(m.id)
+      const attr = ((n?.data as any)?.attributes ?? []).find(
+        (a: ItemAttribute) => a.name === attrName,
+      ) as ItemAttribute | undefined
+      let contribution: number | null = null
+      if (attr) {
+        const v = Number(attr.value)
+        if (Number.isFinite(v)) contribution = v * m.qty
+      }
+      return { id: m.id, name: m.name, qty: m.qty, unit: m.unit, attr, contribution }
+    })
+    const numeric = items.filter((it) => it.contribution !== null)
+    const total =
+      numeric.length === items.length && items.length > 0
+        ? items.reduce((s, it) => s + (it.contribution ?? 0), 0)
+        : null
+    return { name: attrName, targetAttr, items, total }
+  }
+
   return {
     nodes,
     edges,
@@ -650,5 +949,9 @@ export function useRecipeGraph() {
     refreshEdgeUnits,
     getItemNodes,
     getActionNodes,
+    parseSourceRecipe,
+    importSourceRecipes,
+    getTraceAttributeNames,
+    computeAttributeTrace,
   }
 }

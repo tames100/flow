@@ -15,6 +15,21 @@ export const DEFAULT_UNITS: string[] = ['个', 'ml', '组', '份', 'kg']
 /** 节点种类 */
 export type NodeKind = 'item' | 'action'
 
+/**
+ * 物品属性：图标 + 文字 + 值 + 说明。
+ * 其中图标与说明非必选；在配方追踪中可选中某个属性名，展示其沿加工链的属性值计算过程。
+ */
+export interface ItemAttribute {
+  /** 属性图标（emoji 或图片 url，可选） */
+  icon?: string
+  /** 属性名称（如「金币」） */
+  name: string
+  /** 属性值（数字或文本，如 2 / 4） */
+  value: string | number
+  /** 属性说明（可选） */
+  desc?: string
+}
+
 /** 物品节点数据 */
 export interface ItemNodeData {
   kind: 'item'
@@ -27,6 +42,8 @@ export interface ItemNodeData {
   quantity: number
   /** 节点解释（展示在节点卡片上） */
   description?: string
+  /** 物品属性列表（图标 + 名称 + 值 + 说明，图标与说明非必选） */
+  attributes?: ItemAttribute[]
 }
 
 /** 加工动作节点数据 */
@@ -69,6 +86,8 @@ export interface RecipeForm {
     quantity?: number
     /** 输入物品解释 */
     description?: string
+    /** 输入物品属性（图标 + 名称 + 值 + 说明，图标与说明非必选） */
+    attributes?: ItemAttribute[]
     /** 若来自已有产物节点，记录其节点 id */
     refId?: string
   }[]
@@ -99,6 +118,8 @@ export interface RecipeForm {
     quantity?: number
     /** 输出产物解释 */
     description?: string
+    /** 输出产物属性（图标 + 名称 + 值 + 说明，图标与说明非必选） */
+    attributes?: ItemAttribute[]
   }[]
 }
 
