@@ -49,6 +49,13 @@ export interface RecipeForm {
   quantity?: number }
 }
 
+/** 画布视图状态（平移偏移 + 缩放），用于完整还原画布状态 */
+export interface ViewportState {
+  x: number
+  y: number
+  zoom: number
+}
+
 /** 导出 / 导入 的 JSON 结构 */
 export interface RecipeGraphData {
   version: string
@@ -56,4 +63,6 @@ export interface RecipeGraphData {
   actions: string[]
   nodes: RecipeNode[]
   edges: RecipeEdge[]
+  /** 画布视图状态（平移 / 缩放）。旧版本数据无此字段时为可选 */
+  viewport?: ViewportState
 }

@@ -21,27 +21,82 @@ const nodes = ref<any[]>([])
 const edges = ref<any[]>([])
 
 export function useRecipeGraph() {
-  const { addNodes, addEdges, removeNodes, removeEdges, setNodes, setEdges, findNode, updateEdge } =
-    useVueFlow()
+  const {
+    addNodes,
+    addEdges,
+    removeNodes,
+    removeEdges,
+    setNodes,
+    setEdges,
+    findNode,
+    updateEdge,
+    getNodes,
+    getEdges,
+    viewport,
+    setViewport,
+  } = useVueFlow()
   const { allActions } = useActionTypes()
 
-  /** 自动持久化：任何修改后写入 localStorage */
+  /** 从 VueFlow store 序列化节点：仅保留业务字段，保证 position 始终是最新值 */
+  function serializeNodes() {
+    return getNodes.value.map((n) => ({
+      id: n.id,
+      type: n.type,
+      position: { x: n.position.x, y: n.position.y },
+      data: JSON.parse(JSON.stringify(n.data ?? {})),
+    }))
+  }
+
+  /** 从 VueFlow store 序列化连线：仅保留业务字段 */
+  function serializeEdges() {
+    return getEdges.value.map((e) => {
+      const o: Record<string, unknown> = {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+      }
+      if (e.sourceHandle) o.sourceHandle = e.sourceHandle
+      if (e.targetHandle) o.targetHandle = e.targetHandle
+      if (e.type) o.type = e.type
+      if (e.class) o.class = e.class
+      if (e.label) o.label = e.label
+      if (e.labelStyle) o.labelStyle = e.labelStyle
+      if (e.labelBgStyle) o.labelBgStyle = e.labelBgStyle
+      if (e.labelBgPadding) o.labelBgPadding = e.labelBgPadding
+      if (e.labelBgBorderRadius) o.labelBgBorderRadius = e.labelBgBorderRadius
+      return o
+    })
+  }
+
+  /** 生成当前画布的完整快照：节点（含最新位置）+ 连线 + 视图状态（平移/缩放） */
+  function snapshot(): RecipeGraphData {
+    return {
+      version: '1.0',
+      actions: allActions(),
+      nodes: serializeNodes() as unknown as RecipeNode[],
+      edges: serializeEdges() as unknown as RecipeEdge[],
+      viewport: { x: viewport.value.x, y: viewport.value.y, zoom: viewport.value.zoom },
+    }
+  }
+
+  /**
+   * 自动持久化：从 VueFlow store 读取最新画布状态（节点位置 / 连线 / 视图缩放）写入 localStorage。
+   * 任何修改（拖拽、增删、连线、数量编辑）后调用均可保证位置是最新的。
+   */
   function persist() {
     try {
-      const payload: RecipeGraphData = {
-        version: '1.0',
-        actions: allActions(),
-        nodes: JSON.parse(JSON.stringify(nodes.value)),
-        edges: JSON.parse(JSON.stringify(edges.value)),
-      }
+      const payload = snapshot()
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+      // 同步本地副本，保证 getItemNodes / detectCycle / 属性面板数量判断与画布一致
+      nodes.value = JSON.parse(JSON.stringify(payload.nodes))
+      edges.value = JSON.parse(JSON.stringify(payload.edges))
     } catch (e) {
       // localStorage 容量超限等异常时静默忽略
       console.warn('自动保存失败', e)
     }
   }
 
-  /** 从 localStorage 恢复（应用启动时调用一次） */
+  /** 从 localStorage 恢复完整画布状态（含节点位置与视图，应用启动时调用一次） */
   function loadFromStorage(): boolean {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -255,15 +310,9 @@ export function useRecipeGraph() {
     return [...cycleNodes]
   }
 
-  /** 导出 JSON */
+  /** 导出 JSON：包含完整画布状态（节点位置 / 连线 / 视图缩放） */
   function exportJSON(): RecipeGraphData {
-    const { allActions } = useActionTypes()
-    return {
-      version: '1.0',
-      actions: allActions(),
-      nodes: JSON.parse(JSON.stringify(nodes.value)),
-      edges: JSON.parse(JSON.stringify(edges.value)),
-    }
+    return snapshot()
   }
 
   /** 导入 JSON（覆盖当前图）。persist=false 时不重复写回（用于启动时从存储恢复） */
@@ -277,6 +326,10 @@ export function useRecipeGraph() {
     setEdges(data.edges)
     nodes.value = JSON.parse(JSON.stringify(data.nodes))
     edges.value = JSON.parse(JSON.stringify(data.edges))
+    // 完整还原画布视图（平移 / 缩放）；旧版数据无 viewport 时保持默认视图
+    if (data.viewport && typeof data.viewport.zoom === 'number') {
+      setViewport({ x: data.viewport.x, y: data.viewport.y, zoom: data.viewport.zoom })
+    }
     if (persistFlag) persist()
   }
 

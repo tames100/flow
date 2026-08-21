@@ -40,15 +40,23 @@ useCanvasShortcuts({
     clearHighlight()
     selectedNodeId.value = null
   },
-  // Ctrl/Cmd + S：保存为本地文件
-  onSave: onSaveFile,
+  // Ctrl/Cmd + S：保存完整画布状态
+  onSave: onSaveState,
 })
 
-// 启动时从 localStorage 恢复自动保存的数据
+// 启动时从 localStorage 恢复完整画布状态（节点位置 / 连线 / 视图）
 onMounted(() => {
   loadFromStorage()
-  // 10s 一次的自动保存（静默写入 localStorage，作为草稿，避免频繁下载文件干扰）
-  autoSaveTimer = window.setInterval(() => persist(), 10000)
+  // 10s 一次的自动保存：写入 localStorage（完整画布状态），并弹窗提示
+  autoSaveTimer = window.setInterval(() => {
+    persist()
+    ElMessage({
+      message: '已自动保存画布状态（节点位置 / 连线 / 视图）',
+      type: 'success',
+      grouping: true,
+      duration: 1500,
+    })
+  }, 10000)
 })
 
 onBeforeUnmount(() => {
@@ -106,13 +114,19 @@ function onAddRecipe() {
   formDialogVisible.value = true
 }
 
-// 保存：导出为本地 .json 文件（直接落盘），并弹窗提示成功
-function onSaveFile() {
+// 保存：将当前画布完整状态（节点 / 连线 / 节点位置 / 视图缩放）持久化到本地，并弹窗提示
+function onSaveState() {
   // 循环依赖仅作警告，不阻断保存
   const cycle = detectCycle()
   if (cycle.length > 0) {
     ElMessage.warning(`注意：图中存在循环依赖（${cycle.length} 个节点），仍已保存`)
   }
+  persist()
+  ElMessage.success('画布状态已保存（节点位置 / 连线 / 视图）')
+}
+
+// 导出：将完整画布状态生成为本地 .json 文件（便于备份 / 分享）
+function onExportFile() {
   const data = exportJSON()
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -121,7 +135,7 @@ function onSaveFile() {
   a.download = `recipe_${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('已保存到本地文件')
+  ElMessage.success('已导出 .json 文件')
 }
 
 function onImportClick() {
@@ -218,7 +232,7 @@ const shortcutsList = [
   { keys: '点击空白', desc: '取消选中 / 取消高亮' },
   { keys: '右键画布', desc: '打开菜单：创建物品/加工动作节点' },
   { keys: '右键节点', desc: '打开菜单：属性修改 / 复制 / 删除' },
-  { keys: 'Ctrl/⌘ + S', desc: '保存到本地文件（下载 .json）' },
+  { keys: 'Ctrl/⌘ + S', desc: '保存当前画布状态（节点位置 / 连线 / 视图）' },
   { keys: 'Ctrl + A', desc: '全选所有节点' },
   { keys: 'Ctrl + C', desc: '复制选中节点' },
   { keys: 'Ctrl + V', desc: '粘贴（复制生成的新节点）' },
@@ -235,7 +249,8 @@ const shortcutsList = [
       <span class="brand">🎮 游戏配方可视化编辑器</span>
       <div class="tool-actions">
         <el-button size="small" type="primary" @click="onAddRecipe">+ 添加配方</el-button>
-        <el-button size="small" type="primary" @click="onSaveFile">💾 保存到本地文件</el-button>
+        <el-button size="small" type="primary" @click="onSaveState">💾 保存画布状态</el-button>
+        <el-button size="small" @click="onExportFile">导出 JSON</el-button>
         <el-button size="small" @click="onImportClick">导入 JSON</el-button>
         <el-button size="small" type="danger" plain @click="onReset">清空</el-button>
         <el-button size="small" @click="shortcutsVisible = true">⌨ 快捷键说明</el-button>
