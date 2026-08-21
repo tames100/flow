@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
@@ -25,7 +25,7 @@ import {
   type RecipeGraphData,
 } from './composables'
 
-const { onNodeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport } =
+const { onNodeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode } =
   useVueFlow()
 const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode } =
   useRecipeGraph()
@@ -116,9 +116,23 @@ onNodeClick(({ node }) => {
   window.getSelection()?.removeAllRanges()
 })
 
-// 连线时记录（供手动拖拽连接使用）
+// 连线时记录（供手动拖拽连接使用）：统一为有向图，从加工节点指出=输出(橙)，指向加工节点=输入(蓝)
 onConnect((connection) => {
-  addEdges([{ ...connection, id: `e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, class: 'recipe-edge' }])
+  const srcNode = findNode(connection.source)
+  const isOut = srcNode?.data?.kind === 'action'
+  addEdges([
+    {
+      ...connection,
+      id: `e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      class: 'recipe-edge',
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: isOut ? '#e6a23c' : '#409eff',
+        width: 16,
+        height: 16,
+      },
+    },
+  ])
   persist()
   const cycle = detectCycle()
   if (cycle.length > 0) {

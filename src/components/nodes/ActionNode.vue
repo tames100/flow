@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { useImagePreview, useContextMenu, type ActionNodeData } from '../../composables'
+import { useContextMenu, type ActionNodeData } from '../../composables'
 
 const props = defineProps<{
   id: string
   data: ActionNodeData
 }>()
 
-const { openImage } = useImagePreview()
 const { open: openContextMenu } = useContextMenu()
 
 const iconMap: Record<string, string> = {
@@ -21,10 +20,6 @@ const iconMap: Record<string, string> = {
 const icon = computed(() => iconMap[props.data.action] ?? '⚙️')
 const hasImage = computed(() => !!props.data.image)
 
-function zoomImage() {
-  if (hasImage.value) openImage(props.data.image, props.data.label)
-}
-
 function onContextMenu(e: MouseEvent) {
   openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'action' })
 }
@@ -36,7 +31,7 @@ function onContextMenu(e: MouseEvent) {
     <Handle type="target" :position="Position.Left" :connectable="true" />
 
     <div class="action-body">
-      <img v-if="hasImage" :src="data.image" class="action-img zoomable" :alt="data.label" title="点击放大" @click.stop="zoomImage" />
+      <img v-if="hasImage" :src="data.image" class="action-img" :alt="data.label" />
       <span v-else class="action-icon">{{ icon }}</span>
       <span class="action-label">{{ data.label }}</span>
     </div>
@@ -76,10 +71,6 @@ function onContextMenu(e: MouseEvent) {
   object-fit: contain;
   border-radius: 8px;
   background: #fff;
-}
-
-.action-img.zoomable {
-  cursor: zoom-in;
 }
 
 .action-label {

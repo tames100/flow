@@ -1,22 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { useImagePreview, useContextMenu, type ItemNodeData } from '../../composables'
+import { useContextMenu, type ItemNodeData } from '../../composables'
 
 const props = defineProps<{
   id: string
   data: ItemNodeData
 }>()
 
-const { openImage } = useImagePreview()
 const { open: openContextMenu } = useContextMenu()
 
 const hasImage = computed(() => !!props.data.image)
 const displayName = computed(() => props.data.label || '未命名物品')
-
-function zoomImage() {
-  if (hasImage.value) openImage(props.data.image, displayName.value)
-}
 
 function onContextMenu(e: MouseEvent) {
   openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'item' })
@@ -34,14 +29,7 @@ function onContextMenu(e: MouseEvent) {
 
     <div class="item-content">
       <div class="item-img-box">
-        <img
-          v-if="hasImage"
-          :src="data.image"
-          :alt="displayName"
-          class="item-img zoomable"
-          title="点击放大"
-          @click.stop="zoomImage"
-        />
+        <img v-if="hasImage" :src="data.image" :alt="displayName" class="item-img" />
         <div v-else class="item-img placeholder">📦</div>
       </div>
       <span v-if="data.showLabel" class="item-label">{{ displayName }}</span>
@@ -89,10 +77,6 @@ function onContextMenu(e: MouseEvent) {
   object-fit: contain;
   border-radius: 8px;
   background: #f4f4f5;
-}
-
-.item-img.zoomable {
-  cursor: zoom-in;
 }
 
 .item-img.placeholder {

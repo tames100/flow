@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { useVueFlow } from '@vue-flow/core'
+import { useVueFlow, MarkerType } from '@vue-flow/core'
 import type {
   RecipeEdge,
   RecipeForm,
@@ -204,6 +204,8 @@ export function useRecipeGraph() {
         source: s.node.id,
         target: actionNode.id,
         class: 'recipe-edge',
+        // 有向图：输入边箭头蓝色（指向加工节点）
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#409eff', width: 16, height: 16 },
         label: s.quantity > 1 ? `×${s.quantity}` : '',
         labelStyle: { fill: '#409eff', fontWeight: 700, fontSize: '12px' },
         labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
@@ -215,6 +217,8 @@ export function useRecipeGraph() {
         source: actionNode.id,
         target: outputNode.id,
         class: 'recipe-edge',
+        // 有向图：输出边箭头橙色（从加工节点指出）
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#e6a23c', width: 16, height: 16 },
         label: outQty > 1 ? `×${outQty}` : '',
         labelStyle: { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' },
         labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
@@ -323,9 +327,15 @@ export function useRecipeGraph() {
     const { mergeImported } = useActionTypes()
     mergeImported(data.actions)
     setNodes(data.nodes)
-    setEdges(data.edges)
+    // 统一为有向图：导入数据若缺少箭头，自动补默认箭头
+    const decoratedEdges = data.edges.map((e) => ({
+      ...e,
+      markerEnd:
+        e.markerEnd ?? { type: MarkerType.ArrowClosed, color: '#b1b1b7', width: 14, height: 14 },
+    })) as RecipeEdge[]
+    setEdges(decoratedEdges)
     nodes.value = JSON.parse(JSON.stringify(data.nodes))
-    edges.value = JSON.parse(JSON.stringify(data.edges))
+    edges.value = JSON.parse(JSON.stringify(decoratedEdges))
     // 完整还原画布视图（平移 / 缩放）；旧版数据无 viewport 时保持默认视图
     if (data.viewport && typeof data.viewport.zoom === 'number') {
       setViewport({ x: data.viewport.x, y: data.viewport.y, zoom: data.viewport.zoom })

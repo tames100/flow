@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useVueFlow } from '@vue-flow/core'
-import { useRecipeGraph, useActionTypes } from '../composables'
+import { useRecipeGraph, useActionTypes, useImagePreview } from '../composables'
 
 const { findNode, updateNode, getEdges, updateEdge } = useVueFlow()
 const { deleteNode, duplicateNode, persist, edges } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
+const { openImage } = useImagePreview()
 
 // 由 App 通过 v-model 同步选中节点
 const props = defineProps<{ modelValue: string | null }>()
@@ -56,13 +57,13 @@ const action = computed({
 
 const image = computed(() => (node.value?.data as any)?.image ?? '')
 
-// ---- 连线数量编辑（仅物品节点）----
-// hasOutgoing：该物品作为原料连接到动作节点（出边）；hasIncoming：该物品作为产物被输出（入边）
-const hasOutgoing = computed(() =>
-  selectedId.value ? edges.value.some((e) => e.source === selectedId.value) : false,
+// ---- 加工节点输入 / 输出数量（有向图语义）----
+// 任何指向加工节点的连线均为输入；任何从加工节点指出的连线均为输出
+const inEdges = computed(() =>
+  selectedId.value ? edges.value.filter((e) => e.target === selectedId.value) : [],
 )
-const hasIncoming = computed(() =>
-  selectedId.value ? edges.value.some((e) => e.target === selectedId.value) : false,
+const outEdges = computed(() =>
+  selectedId.value ? edges.value.filter((e) => e.source === selectedId.value) : [],
 )
 
 function qtyFromLabel(label: unknown): number {
@@ -70,56 +71,38 @@ function qtyFromLabel(label: unknown): number {
   return m ? +m[1] : 1
 }
 
-/** 更新物品节点某侧所有连线的数量，并同步 VueFlow 渲染与本地存储 */
-function applyQty(side: 'out' | 'in', q: number) {
-  const id = selectedId.value
-  if (!id) return
-  const list = edges.value.filter((e) => (side === 'out' ? e.source === id : e.target === id))
-  if (!list.length) return
+function nodeName(id: string) {
+  const n = findNode(id)
+  return ((n?.data as any)?.label as string) || id
+}
+
+/** 更新单条连线的数量（该边指向本节点则为输入，由本节点指出则为输出），同步连线数字 */
+function applyEdgeQty(e: any, q: number) {
+  const isIn = e.target === selectedId.value
   const label = q > 1 ? `×${q}` : ''
-  const labelStyle =
-    side === 'out'
-      ? { fill: '#409eff', fontWeight: 700, fontSize: '12px' }
-      : { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' }
-  const vfEdges = getEdges.value
-  for (const e of list) {
-    // 同步画布上的连线数字
-    const vf = vfEdges.find((x) => x.id === e.id)
-    if (vf) {
-      updateEdge(vf as any, {
-        label,
-        labelStyle,
-        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
-        labelBgPadding: [4, 2] as [number, number],
-        labelBgBorderRadius: 4,
-      } as any)
-    }
-    // 同步本地存储
-    e.label = label
-    e.labelStyle = labelStyle
+  const labelStyle = isIn
+    ? { fill: '#409eff', fontWeight: 700, fontSize: '12px' }
+    : { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' }
+  // 同步画布上的连线数字
+  const vf = getEdges.value.find((x) => x.id === e.id)
+  if (vf) {
+    updateEdge(vf as any, {
+      label,
+      labelStyle,
+      labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+      labelBgPadding: [4, 2] as [number, number],
+      labelBgBorderRadius: 4,
+    } as any)
   }
+  // 同步本地存储
+  e.label = label
+  e.labelStyle = labelStyle
   persist()
 }
 
-/** 输入数量：该物品作为原料时（出边 source）的数量 */
-const inQty = computed({
-  get: () => {
-    if (!selectedId.value) return 1
-    const e = edges.value.find((x) => x.source === selectedId.value)
-    return e ? qtyFromLabel(e.label) : 1
-  },
-  set: (v: number) => applyQty('out', v),
-})
-
-/** 输出数量：该物品作为产物时（入边 target）的数量 */
-const outQty = computed({
-  get: () => {
-    if (!selectedId.value) return 1
-    const e = edges.value.find((x) => x.target === selectedId.value)
-    return e ? qtyFromLabel(e.label) : 1
-  },
-  set: (v: number) => applyQty('in', v),
-})
+function onEdgeQtyChange(e: any, v: number | undefined) {
+  applyEdgeQty(e, v ?? 1)
+}
 
 function pickImage() {
   fileInput.value?.click()
@@ -199,20 +182,18 @@ watch(selectedId, (v) => emit('update:modelValue', v))
         </el-form-item>
 
         <template v-if="isItem">
-          <el-form-item v-if="hasOutgoing" label="输入数量（作为原料）">
-            <el-input-number v-model="inQty" :min="1" :max="9999" controls-position="right" style="width: 100%" />
-            <div class="qty-tip">同步该物品到所有加工节点的连线数字</div>
-          </el-form-item>
-          <el-form-item v-if="hasIncoming" label="输出数量（作为产物）">
-            <el-input-number v-model="outQty" :min="1" :max="9999" controls-position="right" style="width: 100%" />
-            <div class="qty-tip">同步所有加工节点到该物品的连线数字</div>
-          </el-form-item>
           <el-form-item label="显示文字">
             <el-switch v-model="showLabel" active-text="图片+文字" inactive-text="仅图片" />
           </el-form-item>
           <el-form-item label="图片">
             <div class="img-box">
-              <img v-if="image" :src="image" class="preview" />
+              <img
+                v-if="image"
+                :src="image"
+                class="preview zoomable"
+                :title="`点击放大：${label}`"
+                @click.stop="openImage(image, label)"
+              />
               <div v-else class="preview placeholder">无</div>
               <el-button size="small" type="primary" @click="pickImage">替换图片</el-button>
             </div>
@@ -221,6 +202,36 @@ watch(selectedId, (v) => emit('update:modelValue', v))
         </template>
 
         <template v-if="isAction">
+          <el-form-item v-if="inEdges.length" label="输入数量">
+            <div v-for="e in inEdges" :key="e.id" class="qty-row">
+              <span class="qty-name" :title="nodeName(e.source)">{{ nodeName(e.source) }}</span>
+              <el-input-number
+                :model-value="qtyFromLabel(e.label)"
+                :min="1"
+                :max="9999"
+                controls-position="right"
+                size="small"
+                style="width: 120px"
+                @change="onEdgeQtyChange(e, $event)"
+              />
+            </div>
+            <div class="qty-tip">指向本加工节点的连线均为输入</div>
+          </el-form-item>
+          <el-form-item v-if="outEdges.length" label="输出数量">
+            <div v-for="e in outEdges" :key="e.id" class="qty-row">
+              <span class="qty-name" :title="nodeName(e.target)">{{ nodeName(e.target) }}</span>
+              <el-input-number
+                :model-value="qtyFromLabel(e.label)"
+                :min="1"
+                :max="9999"
+                controls-position="right"
+                size="small"
+                style="width: 120px"
+                @change="onEdgeQtyChange(e, $event)"
+              />
+            </div>
+            <div class="qty-tip">本加工节点指出的连线均为输出</div>
+          </el-form-item>
           <el-form-item label="加工动作">
             <el-select
               v-model="action"
@@ -235,7 +246,13 @@ watch(selectedId, (v) => emit('update:modelValue', v))
           </el-form-item>
           <el-form-item label="动作图标">
             <div class="img-box">
-              <img v-if="image" :src="image" class="preview" />
+              <img
+                v-if="image"
+                :src="image"
+                class="preview zoomable"
+                :title="`点击放大：${label}`"
+                @click.stop="openImage(image, label)"
+              />
               <div v-else class="preview placeholder">默认</div>
               <el-button size="small" type="primary" @click="pickActionImage">替换图标</el-button>
             </div>
@@ -277,6 +294,23 @@ watch(selectedId, (v) => emit('update:modelValue', v))
   color: #909399;
   margin-top: 4px;
 }
+.qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 3px 0;
+}
+.qty-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .img-box {
   display: flex;
   align-items: center;
@@ -288,6 +322,13 @@ watch(selectedId, (v) => emit('update:modelValue', v))
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid #dcdfe6;
+}
+.preview.zoomable {
+  cursor: zoom-in;
+  transition: transform 0.15s ease;
+}
+.preview.zoomable:hover {
+  transform: scale(1.08);
 }
 .preview.placeholder {
   display: flex;
