@@ -91,6 +91,17 @@ pnpm preview
 
 - **按需导入**：Element Plus 组件与 API 由 `unplugin-auto-import` / `unplugin-vue-components` 自动按需引入并注入样式，主包显著减小。
 - **分包策略**：第三方库按 `vue` / `vue-flow` / `element-plus` 拆分为独立 vendor chunk（`vite.config.ts` 中 `manualChunks`），裁剪器 `cropperjs` 仅在打开裁剪弹窗时按需加载。
+- **相对路径引用**：`vite.config.ts` 设置了 `base: './'`，所有 JS / CSS / 图片资源均按相对 `index.html` 的路径引用，可直接部署到任意子目录（如 GitHub Pages）。
 - **产物体积参考**：主包 JS 约 50KB（gzip 16KB），全部 JS 约 725KB（gzip 243KB），CSS 约 153KB（gzip 24KB）。
 
 > 依赖说明：`@vue-flow/core` 为图核心，`@vue-flow/background` / `@vue-flow/controls` / `@vue-flow/minimap` 为画布辅助组件，`element-plus` 为 UI 组件库，`vue` 为框架。详见 `package.json`。
+
+## 部署到 GitHub Pages
+
+构建产物为纯静态文件，无需服务器：
+
+1. 执行 `pnpm build`，产出 `dist/` 目录。
+2. 将 `dist/` 目录内容上传到仓库（如 `username/flow`），使页面位于 `https://username.github.io/flow/dist/index.html`。
+3. 因已启用 `base: './'`，页面会从**当前目录**（`/flow/dist/assets/...`）加载依赖文件，无需修改任何路径即可正常访问。
+
+> 常见问题：若未设置 `base`（默认 `'/'`），`index.html` 会引用 `/assets/xxx.js`，浏览器会到域名根目录查找资源而加载失败，报错类似于"Failed to load module script"。设置相对路径后即可避免。

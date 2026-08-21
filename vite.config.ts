@@ -6,6 +6,8 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 使用相对路径引用资源，可直接部署到任意子路径（如 GitHub Pages 的 /flow/dist/）下
+  base: './',
   plugins: [
     vue(),
     // Element Plus 按需自动导入（组件与 API 均按需，自动注入对应样式）
