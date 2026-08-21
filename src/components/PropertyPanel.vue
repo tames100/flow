@@ -2,11 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useVueFlow } from '@vue-flow/core'
-import { useRecipeGraph } from '../composables/useRecipeGraph'
-import { useActionTypes } from '../composables/useActionTypes'
+import { useRecipeGraph, useActionTypes } from '../composables'
 
-const { findNode, updateNode } = useVueFlow()
-const { deleteNode, duplicateNode, persist } = useRecipeGraph()
+const { findNode, updateNode, getEdges, updateEdge } = useVueFlow()
+const { deleteNode, duplicateNode, persist, edges } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 
 // 由 App 通过 v-model 同步选中节点
@@ -56,6 +55,71 @@ const action = computed({
 })
 
 const image = computed(() => (node.value?.data as any)?.image ?? '')
+
+// ---- 连线数量编辑（仅物品节点）----
+// hasOutgoing：该物品作为原料连接到动作节点（出边）；hasIncoming：该物品作为产物被输出（入边）
+const hasOutgoing = computed(() =>
+  selectedId.value ? edges.value.some((e) => e.source === selectedId.value) : false,
+)
+const hasIncoming = computed(() =>
+  selectedId.value ? edges.value.some((e) => e.target === selectedId.value) : false,
+)
+
+function qtyFromLabel(label: unknown): number {
+  const m = /×(\d+)/.exec(String(label ?? ''))
+  return m ? +m[1] : 1
+}
+
+/** 更新物品节点某侧所有连线的数量，并同步 VueFlow 渲染与本地存储 */
+function applyQty(side: 'out' | 'in', q: number) {
+  const id = selectedId.value
+  if (!id) return
+  const list = edges.value.filter((e) => (side === 'out' ? e.source === id : e.target === id))
+  if (!list.length) return
+  const label = q > 1 ? `×${q}` : ''
+  const labelStyle =
+    side === 'out'
+      ? { fill: '#409eff', fontWeight: 700, fontSize: '12px' }
+      : { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' }
+  const vfEdges = getEdges.value
+  for (const e of list) {
+    // 同步画布上的连线数字
+    const vf = vfEdges.find((x) => x.id === e.id)
+    if (vf) {
+      updateEdge(vf as any, {
+        label,
+        labelStyle,
+        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 4,
+      } as any)
+    }
+    // 同步本地存储
+    e.label = label
+    e.labelStyle = labelStyle
+  }
+  persist()
+}
+
+/** 输入数量：该物品作为原料时（出边 source）的数量 */
+const inQty = computed({
+  get: () => {
+    if (!selectedId.value) return 1
+    const e = edges.value.find((x) => x.source === selectedId.value)
+    return e ? qtyFromLabel(e.label) : 1
+  },
+  set: (v: number) => applyQty('out', v),
+})
+
+/** 输出数量：该物品作为产物时（入边 target）的数量 */
+const outQty = computed({
+  get: () => {
+    if (!selectedId.value) return 1
+    const e = edges.value.find((x) => x.target === selectedId.value)
+    return e ? qtyFromLabel(e.label) : 1
+  },
+  set: (v: number) => applyQty('in', v),
+})
 
 function pickImage() {
   fileInput.value?.click()
@@ -135,6 +199,14 @@ watch(selectedId, (v) => emit('update:modelValue', v))
         </el-form-item>
 
         <template v-if="isItem">
+          <el-form-item v-if="hasOutgoing" label="输入数量（作为原料）">
+            <el-input-number v-model="inQty" :min="1" :max="9999" controls-position="right" style="width: 100%" />
+            <div class="qty-tip">同步该物品到所有加工节点的连线数字</div>
+          </el-form-item>
+          <el-form-item v-if="hasIncoming" label="输出数量（作为产物）">
+            <el-input-number v-model="outQty" :min="1" :max="9999" controls-position="right" style="width: 100%" />
+            <div class="qty-tip">同步所有加工节点到该物品的连线数字</div>
+          </el-form-item>
           <el-form-item label="显示文字">
             <el-switch v-model="showLabel" active-text="图片+文字" inactive-text="仅图片" />
           </el-form-item>
@@ -199,6 +271,11 @@ watch(selectedId, (v) => emit('update:modelValue', v))
 .panel-title {
   margin: 0 0 12px;
   font-size: 16px;
+}
+.qty-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
 }
 .img-box {
   display: flex;

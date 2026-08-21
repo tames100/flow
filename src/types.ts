@@ -38,7 +38,15 @@ export interface RecipeForm {
   action: string
   /** 加工动作图标图片 */
   actionImage?: string
-  output: { name: string; image?: string }
+  /**
+   * 若选择了画布中已有的加工节点，记录其节点 id。
+   * 配合 reuseActionImage 决定是复用该节点还是新建同名独立节点。
+   */
+  actionRefId?: string
+  /** 是否复用所选加工节点的图片（true=复用；false=新建节点需用户上传图片） */
+  reuseActionImage?: boolean
+  output: { name: string; image?: string; /** 输出产物数量 */
+  quantity?: number }
 }
 
 /** 导出 / 导入 的 JSON 结构 */

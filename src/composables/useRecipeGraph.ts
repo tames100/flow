@@ -21,7 +21,7 @@ const nodes = ref<any[]>([])
 const edges = ref<any[]>([])
 
 export function useRecipeGraph() {
-  const { addNodes, addEdges, removeNodes, removeEdges, setNodes, setEdges, findNode } =
+  const { addNodes, addEdges, removeNodes, removeEdges, setNodes, setEdges, findNode, updateEdge } =
     useVueFlow()
   const { allActions } = useActionTypes()
 
@@ -115,21 +115,33 @@ export function useRecipeGraph() {
       return { node: n, quantity: inp.quantity ?? 1 }
     })
 
-    const actionNode = createActionNode(
-      form.action,
-      {
-        x: baseX + 220,
-        y: baseY + ((inputSources.length - 1) * 90) / 2,
-      },
-      form.actionImage ?? '',
-    )
-    createdNodes.push(actionNode)
+    // 加工动作节点：若选择了已有加工节点且勾选复用图片 -> 复用该节点；否则新建
+    let actionNode: any = null
+    if (form.actionRefId && form.reuseActionImage) {
+      const existing = findNode(form.actionRefId)
+      if (existing) actionNode = existing
+    }
+    if (!actionNode) {
+      actionNode = createActionNode(
+        form.action,
+        {
+          x: baseX + 220,
+          y: baseY + ((inputSources.length - 1) * 90) / 2,
+        },
+        form.actionImage ?? '',
+      )
+      createdNodes.push(actionNode)
+    }
 
     const outputNode = createItemNode(form.output.name, form.output.image ?? '', {
       x: baseX + 460,
       y: baseY + ((inputSources.length - 1) * 90) / 2,
     })
+    // 输出数量记录在输出物品节点上（用于动作 -> 输出 连线展示）
+    ;(outputNode.data as any).quantity = form.output.quantity ?? 1
     createdNodes.push(outputNode)
+
+    const outQty = form.output.quantity ?? 1
 
     const newEdges: RecipeEdge[] = [
       ...inputSources.map((s) => ({
@@ -148,6 +160,11 @@ export function useRecipeGraph() {
         source: actionNode.id,
         target: outputNode.id,
         class: 'recipe-edge',
+        label: outQty > 1 ? `×${outQty}` : '',
+        labelStyle: { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' },
+        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 4,
       },
     ]
 
@@ -274,9 +291,22 @@ export function useRecipeGraph() {
       }))
   }
 
+  /** 列出当前画布上已有的加工动作节点（供配方录入「选择已有加工节点」使用） */
+  function getActionNodes() {
+    return nodes.value
+      .filter((n) => n.data?.kind === 'action')
+      .map((n) => ({
+        id: n.id,
+        name: (n.data as any).label ?? '',
+        action: (n.data as any).action ?? '',
+        image: (n.data as any).image ?? '',
+      }))
+  }
+
   return {
     nodes,
     edges,
+    updateEdge,
     createItemNode,
     createActionNode,
     addRecipeFromForm,
@@ -288,5 +318,6 @@ export function useRecipeGraph() {
     persist,
     loadFromStorage,
     getItemNodes,
+    getActionNodes,
   }
 }

@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import type { ItemNodeData } from '../../types'
-import { useImagePreview } from '../../composables/useImagePreview'
-import { useContextMenu } from '../../composables/useContextMenu'
+import { useImagePreview, useContextMenu, type ItemNodeData } from '../../composables'
 
 const props = defineProps<{
   id: string

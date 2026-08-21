@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watch, onBeforeUnmount } from 'vue'
-import { useImagePreview } from '../composables/useImagePreview'
+import { useImagePreview } from '../composables'
 
 const { visible, src, alt, close } = useImagePreview()
 

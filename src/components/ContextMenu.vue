@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useContextMenu } from '../composables/useContextMenu'
+import { useContextMenu } from '../composables'
 
 const { visible, x, y, target, close } = useContextMenu()
 

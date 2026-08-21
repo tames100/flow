@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { RecipeForm } from '../types'
-import { useRecipeGraph } from '../composables/useRecipeGraph'
-import { useActionTypes } from '../composables/useActionTypes'
-import { useImageUpload } from '../composables/useImageUpload'
+import { useRecipeGraph, useActionTypes, useImageUpload, type RecipeForm } from '../composables'
 
-const { addRecipeFromForm, detectCycle, getItemNodes } = useRecipeGraph()
+const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 
 const emit = defineEmits<{ submitted: [] }>()
@@ -15,7 +12,9 @@ const form = reactive<RecipeForm>({
   inputs: [{ name: '', image: '', quantity: 1 }],
   action: '合成',
   actionImage: '',
-  output: { name: '', image: '' },
+  actionRefId: undefined,
+  reuseActionImage: true,
+  output: { name: '', image: '', quantity: 1 },
 })
 
 const inputUpload = useImageUpload()
@@ -88,6 +87,35 @@ function onSelectExisting(idx: number, nodeId: string) {
   form.inputs[idx].refId = nodeId
 }
 
+/** 选择已有加工节点：带入动作名称；若勾选复用图片，则带入该节点图片 */
+function onSelectExistingAction(nodeId?: string) {
+  if (!nodeId) {
+    form.actionRefId = undefined
+    return
+  }
+  const act = getActionNodes().find((n) => n.id === nodeId)
+  if (!act) return
+  form.action = act.name
+  form.actionRefId = nodeId
+  if (form.reuseActionImage) {
+    form.actionImage = act.image
+  }
+}
+
+/** 切换「复用图片」：勾选则带出所选加工节点图片，取消则清空（需用户上传） */
+function onToggleReuse() {
+  if (form.actionRefId) {
+    const act = getActionNodes().find((n) => n.id === form.actionRefId)
+    if (form.reuseActionImage && act) form.actionImage = act.image
+    else form.actionImage = ''
+  }
+}
+
+/** 手动修改加工动作名称/清空选择时，断开复用关联 */
+function onActionNameChange() {
+  form.actionRefId = undefined
+}
+
 function submit() {
   const validInputs = form.inputs.filter((i) => i.name.trim())
   if (validInputs.length === 0) {
@@ -110,7 +138,13 @@ function submit() {
     })),
     action: form.action,
     actionImage: form.actionImage,
-    output: { name: form.output.name.trim(), image: form.output.image },
+    actionRefId: form.actionRefId,
+    reuseActionImage: form.reuseActionImage,
+    output: {
+      name: form.output.name.trim(),
+      image: form.output.image,
+      quantity: form.output.quantity,
+    },
   })
 
   // 新增后立即检测循环依赖
@@ -130,8 +164,10 @@ function submit() {
 
   // 重置输入行（保留一行）
   form.inputs = [{ name: '', image: '' }]
-  form.output = { name: '', image: '' }
+  form.output = { name: '', image: '', quantity: 1 }
   form.actionImage = ''
+  form.actionRefId = undefined
+  form.reuseActionImage = true
   outputUpload.reset()
   actionUpload.reset()
 }
@@ -188,15 +224,39 @@ function submit() {
 
       <div class="section-label" style="margin-top: 14px">加工动作</div>
       <el-select
-        v-model="form.action"
+        :model-value="form.actionRefId"
+        placeholder="选择已有加工节点（可选）"
+        clearable
+        filterable
         style="width: 100%"
+        @change="onSelectExistingAction"
+      >
+        <el-option v-for="n in getActionNodes()" :key="n.id" :label="n.name" :value="n.id">
+          <span style="display: flex; align-items: center; gap: 6px">
+            <img v-if="n.image" :src="n.image" class="opt-thumb" />
+            <span>{{ n.name || '未命名' }}</span>
+          </span>
+        </el-option>
+      </el-select>
+      <el-select
+        v-model="form.action"
+        style="width: 100%; margin-top: 6px"
         filterable
         allow-create
         default-first-option
         placeholder="选择或输入自定义动作"
+        @change="onActionNameChange"
       >
         <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
       </el-select>
+      <el-checkbox
+        v-if="form.actionRefId"
+        v-model="form.reuseActionImage"
+        style="margin-top: 6px"
+        @change="onToggleReuse"
+      >
+        复用该加工节点的图片
+      </el-checkbox>
       <!-- 加工动作图标图片上传（点击/拖拽/粘贴） -->
       <div
         class="drop-zone full"
@@ -212,6 +272,10 @@ function submit() {
 
       <div class="section-label" style="margin-top: 14px">输出产物</div>
       <el-input v-model="form.output.name" placeholder="产物名称" clearable @focus="pasteTarget = 'output'" />
+      <div class="name-quantity" style="margin-top: 6px">
+        <span class="qty-label">产出数量</span>
+        <el-input-number v-model="form.output.quantity" :min="1" :max="9999" size="small" controls-position="right" class="qty-input" />
+      </div>
       <div
         class="drop-zone full"
         :class="{ active: pasteTarget === 'output' }"
@@ -251,6 +315,11 @@ function submit() {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.qty-label {
+  font-size: 13px;
+  color: #606266;
+  white-space: nowrap;
 }
 .qty-input {
   width: 110px;

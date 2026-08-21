@@ -17,11 +17,13 @@ import ActionNode from './components/nodes/ActionNode.vue'
 import ImagePreview from './components/ImagePreview.vue'
 import ContextMenu from './components/ContextMenu.vue'
 
-import { useRecipeGraph } from './composables/useRecipeGraph'
-import { useRecipeHighlight } from './composables/useRecipeHighlight'
-import { useCanvasShortcuts } from './composables/useCanvasShortcuts'
-import { useContextMenu } from './composables/useContextMenu'
-import type { RecipeGraphData } from './types'
+import {
+  useRecipeGraph,
+  useRecipeHighlight,
+  useCanvasShortcuts,
+  useContextMenu,
+  type RecipeGraphData,
+} from './composables'
 
 const { onNodeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport } =
   useVueFlow()
