@@ -27,12 +27,15 @@ function onContextMenu(e: MouseEvent) {
     <!-- 输入连接点（物品作为原料时位于左侧） -->
     <Handle type="target" :position="Position.Left" :connectable="true" />
 
+    <span class="node-badge" title="物品节点（原料 / 产物）">物品</span>
+
     <div class="item-content">
       <div class="item-img-box">
         <img v-if="hasImage" :src="data.image" :alt="displayName" class="item-img" />
         <div v-else class="item-img placeholder">📦</div>
       </div>
       <span v-if="data.showLabel" class="item-label">{{ displayName }}</span>
+      <div v-if="data.description" class="node-desc" :title="data.description">{{ data.description }}</div>
     </div>
 
     <!-- 输出连接点（物品作为产物时位于右侧） -->
@@ -42,6 +45,7 @@ function onContextMenu(e: MouseEvent) {
 
 <style scoped>
 .item-node {
+  position: relative;
   min-width: 90px;
   padding: 8px 10px;
   background: #ffffff;
@@ -52,6 +56,22 @@ function onContextMenu(e: MouseEvent) {
   user-select: none;
   text-align: center;
   transition: box-shadow 0.15s ease;
+}
+
+.node-badge {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  z-index: 1;
+  padding: 1px 7px;
+  font-size: 10px;
+  line-height: 16px;
+  color: #fff;
+  background: #67c23a;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  user-select: none;
+  pointer-events: none;
 }
 
 .item-node:hover {
@@ -91,6 +111,20 @@ function onContextMenu(e: MouseEvent) {
   font-weight: 600;
   color: #1f2933;
   word-break: break-all;
+}
+
+.node-desc {
+  max-width: 170px;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #909399;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .item-node.no-label {

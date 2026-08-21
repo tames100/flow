@@ -3,9 +3,10 @@ import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useVueFlow, MarkerType } from '@vue-flow/core'
 import { useRecipeGraph, useActionTypes, useImagePreview } from '../composables'
+import { DEFAULT_UNITS } from '../types'
 
 const { findNode, updateNode, getEdges, removeEdges } = useVueFlow()
-const { deleteNode, duplicateNode, persist } = useRecipeGraph()
+const { deleteNode, duplicateNode, persist, computeBasicMaterials } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 const { openImage } = useImagePreview()
 
@@ -35,6 +36,16 @@ const label = computed({
   set: (v: string) => {
     if (node.value) {
       updateNode(node.value.id, { data: { ...node.value.data, label: v } })
+      persist()
+    }
+  },
+})
+
+const description = computed({
+  get: () => (node.value?.data ? (node.value.data as any)?.description ?? '' : ''),
+  set: (v: string) => {
+    if (node.value) {
+      updateNode(node.value.id, { data: { ...node.value.data, description: v } })
       persist()
     }
   },
@@ -79,18 +90,35 @@ function qtyFromLabel(label: unknown): number {
   return m ? +m[1] : 1
 }
 
+/** 读取连线的数量单位（自定义字段） */
+function unitOf(e: any): string {
+  return (e as any)?.unit ?? ''
+}
+
+/** 收集「目前已有的单位」：内置默认单位 + 画布上所有连线使用过的单位 */
+function getUnitOptions(): string[] {
+  const set = new Set<string>(DEFAULT_UNITS)
+  getEdges.value.forEach((e: any) => {
+    const u = e?.unit
+    if (u) set.add(u)
+  })
+  return [...set]
+}
+
 function nodeName(id: string) {
   const n = findNode(id)
   return ((n?.data as any)?.label as string) || id
 }
 
-/** 更新单条连线的数量（指向本节点=输入，本节点指出=输出），直接修改响应式连线对象，连线数字即时同步 */
-function applyEdgeQty(e: any, q: number) {
+/** 更新单条连线的数量与单位（指向本节点=输入，本节点指出=输出），直接修改响应式连线对象，连线数字即时同步 */
+function applyEdgeQty(e: any, q: number, unit = '') {
   const isIn = e.target === selectedId.value || e.target === edgeId.value
-  const label = q > 1 ? `×${q}` : ''
+  const qty = Math.max(1, Math.floor(q || 1))
+  const label = qty > 1 || unit ? `×${qty}${unit ? ' ' + unit : ''}` : ''
   const color = isIn ? '#409eff' : '#e6a23c'
   Object.assign(e, {
     label,
+    unit: unit || undefined,
     labelStyle: { fill: color, fontWeight: 700, fontSize: '12px' },
     labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
     labelBgPadding: [4, 2],
@@ -100,8 +128,21 @@ function applyEdgeQty(e: any, q: number) {
 }
 
 function onQtyInput(e: any, v: number | undefined) {
-  applyEdgeQty(e, v ?? 1)
+  applyEdgeQty(e, v ?? 1, unitOf(e))
 }
+
+function onUnitInput(e: any, v: string | undefined) {
+  applyEdgeQty(e, qtyFromLabel(e.label), v ?? '')
+}
+
+// ---- 配方追踪（仅物品节点）：按上游加工输入 / 输出数量反推基本原料需求 ----
+const traceQty = ref(1)
+const traceMaterials = computed(() =>
+  selectedId.value ? computeBasicMaterials(selectedId.value, traceQty.value) : [],
+)
+const isBasicSelf = computed(
+  () => traceMaterials.value.length === 1 && traceMaterials.value[0].id === selectedId.value,
+)
 
 // ---- 连线编辑模式（点击连线后编辑样式）----
 const selectedEdge = computed(() =>
@@ -111,7 +152,14 @@ const selectedEdge = computed(() =>
 const edgeQty = computed({
   get: () => (selectedEdge.value ? qtyFromLabel(selectedEdge.value.label) : 1),
   set: (v: number | undefined) => {
-    if (selectedEdge.value) applyEdgeQty(selectedEdge.value, v ?? 1)
+    if (selectedEdge.value) applyEdgeQty(selectedEdge.value, v ?? 1, unitOf(selectedEdge.value))
+  },
+})
+
+const edgeUnit = computed({
+  get: () => (selectedEdge.value ? unitOf(selectedEdge.value) : ''),
+  set: (v: string | undefined) => {
+    if (selectedEdge.value) applyEdgeQty(selectedEdge.value, edgeQty.value, v ?? '')
   },
 })
 
@@ -277,8 +325,21 @@ watch(edgeId, (v) => emit('update:edge', v))
         <el-form-item label="连线方向">
           <span class="edge-dir">{{ nodeName(selectedEdge.source) }} → {{ nodeName(selectedEdge.target) }}</span>
         </el-form-item>
-        <el-form-item label="数量">
-          <el-input-number v-model="edgeQty" :min="1" :max="9999" controls-position="right" style="width: 100%" />
+        <el-form-item label="数量与单位">
+          <div class="qty-unit-row">
+            <el-input-number v-model="edgeQty" :min="1" :max="9999" controls-position="right" style="flex: 1" />
+            <el-select
+              v-model="edgeUnit"
+              placeholder="单位"
+              clearable
+              filterable
+              allow-create
+              default-first-option
+              style="width: 96px"
+            >
+              <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
+            </el-select>
+          </div>
         </el-form-item>
         <el-form-item label="线条样式">
           <el-select v-model="edgeLineStyle" style="width: 100%">
@@ -318,6 +379,10 @@ watch(edgeId, (v) => emit('update:edge', v))
           <el-input v-model="label" placeholder="节点名称" />
         </el-form-item>
 
+        <el-form-item label="解释">
+          <el-input v-model="description" type="textarea" :rows="2" placeholder="节点解释（展示在节点上）" />
+        </el-form-item>
+
         <template v-if="isItem">
           <el-form-item label="显示文字">
             <el-switch v-model="showLabel" active-text="图片+文字" inactive-text="仅图片" />
@@ -336,6 +401,26 @@ watch(edgeId, (v) => emit('update:edge', v))
             </div>
             <input ref="fileInput" type="file" accept="image/*" style="display: none" @change="onFileChange" />
           </el-form-item>
+
+          <el-divider content-position="left">配方追踪</el-divider>
+          <el-form-item label="目标数量（想要多少个该产物）">
+            <el-input-number v-model="traceQty" :min="1" :max="999999" controls-position="right" style="width: 100%" />
+          </el-form-item>
+          <div class="trace-tip">按上游加工节点的输入 / 输出数量反推所需<b>基本原料</b>（不依赖其他加工节点、直接作为原料消耗的源头物品）：</div>
+          <div v-if="isBasicSelf" class="trace-result">
+            <div class="trace-row">
+              <span class="trace-name">{{ label }}</span>
+              <span class="trace-qty">× {{ traceQty }}{{ traceMaterials[0].unit ? ' ' + traceMaterials[0].unit : '' }}</span>
+            </div>
+            <div class="qty-tip">该产物本身就是基本原料，无上游加工链。</div>
+          </div>
+          <div v-else-if="traceMaterials.length" class="trace-result">
+            <div v-for="m in traceMaterials" :key="m.id" class="trace-row">
+              <span class="trace-name" :title="m.name">{{ m.name }}</span>
+              <span class="trace-qty">× {{ m.qty }}{{ m.unit ? ' ' + m.unit : '' }}</span>
+            </div>
+          </div>
+          <div v-else class="trace-empty">该产物没有上游加工链，无法反推。</div>
         </template>
 
         <template v-if="isAction">
@@ -348,9 +433,22 @@ watch(edgeId, (v) => emit('update:edge', v))
                 :max="9999"
                 controls-position="right"
                 size="small"
-                style="width: 120px"
+                style="width: 96px"
                 @update:model-value="onQtyInput(e, $event)"
               />
+              <el-select
+                :model-value="unitOf(e)"
+                placeholder="单位"
+                clearable
+                filterable
+                allow-create
+                default-first-option
+                size="small"
+                style="width: 76px"
+                @update:model-value="onUnitInput(e, $event)"
+              >
+                <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
+              </el-select>
             </div>
             <div class="qty-tip">指向本加工节点的连线均为输入</div>
           </el-form-item>
@@ -363,9 +461,22 @@ watch(edgeId, (v) => emit('update:edge', v))
                 :max="9999"
                 controls-position="right"
                 size="small"
-                style="width: 120px"
+                style="width: 96px"
                 @update:model-value="onQtyInput(e, $event)"
               />
+              <el-select
+                :model-value="unitOf(e)"
+                placeholder="单位"
+                clearable
+                filterable
+                allow-create
+                default-first-option
+                size="small"
+                style="width: 76px"
+                @update:model-value="onUnitInput(e, $event)"
+              >
+                <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
+              </el-select>
             </div>
             <div class="qty-tip">本加工节点指出的连线均为输出</div>
           </el-form-item>
@@ -430,6 +541,51 @@ watch(edgeId, (v) => emit('update:edge', v))
   font-size: 12px;
   color: #909399;
   margin-top: 4px;
+}
+.qty-unit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.trace-tip {
+  font-size: 12px;
+  color: #909399;
+  margin: -4px 0 8px;
+  line-height: 1.6;
+}
+.trace-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.trace-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.trace-name {
+  flex: 1;
+  min-width: 0;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trace-qty {
+  color: #e6a23c;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.trace-empty {
+  font-size: 12px;
+  color: #909399;
 }
 .qty-row {
   display: flex;

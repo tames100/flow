@@ -9,12 +9,13 @@ const { allActions, addAction } = useActionTypes()
 const emit = defineEmits<{ submitted: [] }>()
 
 const form = reactive<RecipeForm>({
-  inputs: [{ name: '', image: '', quantity: 1 }],
+  inputs: [{ name: '', image: '', quantity: 1, description: '' }],
   action: '合成',
   actionImage: '',
+  actionDescription: '',
   actionRefId: undefined,
   reuseActionImage: true,
-  output: { name: '', image: '', quantity: 1 },
+  output: { name: '', image: '', quantity: 1, description: '' },
 })
 
 const inputUpload = useImageUpload()
@@ -67,7 +68,7 @@ onMounted(() => window.addEventListener('paste', onPaste))
 onBeforeUnmount(() => window.removeEventListener('paste', onPaste))
 
 function addInputRow() {
-  form.inputs.push({ name: '', image: '', quantity: 1 })
+  form.inputs.push({ name: '', image: '', quantity: 1, description: '' })
 }
 
 function removeInputRow(idx: number) {
@@ -135,15 +136,18 @@ function submit() {
       name: i.name.trim(),
       image: i.image,
       refId: i.refId,
+      description: i.description ?? '',
     })),
     action: form.action,
     actionImage: form.actionImage,
+    actionDescription: form.actionDescription ?? '',
     actionRefId: form.actionRefId,
     reuseActionImage: form.reuseActionImage,
     output: {
       name: form.output.name.trim(),
       image: form.output.image,
       quantity: form.output.quantity,
+      description: form.output.description ?? '',
     },
   })
 
@@ -163,9 +167,10 @@ function submit() {
   emit('submitted')
 
   // 重置输入行（保留一行）
-  form.inputs = [{ name: '', image: '' }]
-  form.output = { name: '', image: '', quantity: 1 }
+  form.inputs = [{ name: '', image: '', quantity: 1, description: '' }]
+  form.output = { name: '', image: '', quantity: 1, description: '' }
   form.actionImage = ''
+  form.actionDescription = ''
   form.actionRefId = undefined
   form.reuseActionImage = true
   outputUpload.reset()
@@ -203,6 +208,15 @@ function submit() {
           <el-input v-model="inp.name" placeholder="或手动输入物品名称" clearable @focus="pasteTarget = idx" />
           <el-input-number v-model="inp.quantity" :min="1" :max="9999" size="small" controls-position="right" class="qty-input" />
         </div>
+        <el-input
+          v-model="inp.description"
+          type="textarea"
+          :rows="1"
+          autosize
+          placeholder="输入解释（可选，展示在节点上）"
+          class="desc-input"
+          @focus="pasteTarget = idx"
+        />
         <div class="row-actions">
           <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
           <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
@@ -269,6 +283,15 @@ function submit() {
         <img v-if="form.actionImage" :src="form.actionImage" class="thumb" />
         <span v-else class="drop-hint">点击 / 拖拽 / 粘贴动作图标</span>
       </div>
+      <el-input
+        v-model="form.actionDescription"
+        type="textarea"
+        :rows="1"
+        autosize
+        placeholder="加工解释（可选，展示在节点上）"
+        class="desc-input"
+        style="margin-top: 6px"
+      />
 
       <div class="section-label" style="margin-top: 14px">输出产物</div>
       <el-input v-model="form.output.name" placeholder="产物名称" clearable @focus="pasteTarget = 'output'" />
@@ -276,6 +299,15 @@ function submit() {
         <span class="qty-label">产出数量</span>
         <el-input-number v-model="form.output.quantity" :min="1" :max="9999" size="small" controls-position="right" class="qty-input" />
       </div>
+      <el-input
+        v-model="form.output.description"
+        type="textarea"
+        :rows="1"
+        autosize
+        placeholder="产物解释（可选，展示在节点上）"
+        class="desc-input"
+        style="margin-top: 6px"
+      />
       <div
         class="drop-zone full"
         :class="{ active: pasteTarget === 'output' }"
@@ -332,6 +364,10 @@ function submit() {
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px dashed #ebeef5;
+}
+.desc-input :deep(.el-textarea__inner) {
+  font-size: 12px;
+  padding: 4px 8px;
 }
 .row-actions {
   display: flex;

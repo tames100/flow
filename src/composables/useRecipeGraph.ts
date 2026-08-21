@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useVueFlow, MarkerType } from '@vue-flow/core'
 import type {
+  MaterialDemand,
   RecipeEdge,
   RecipeForm,
   RecipeGraphData,
@@ -15,6 +16,18 @@ let nodeSeq = 1
 
 function genId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${nodeSeq++}`
+}
+
+/** 解析连线 label 中的数量（如 ×5 ml → 5；无 label 视为 1） */
+function qtyFromLabel(label: unknown): number {
+  const m = /×(\d+)/.exec(String(label ?? ''))
+  return m ? +m[1] : 1
+}
+
+/** 解析连线 label 中的单位（如 ×5 ml → 'ml'；无单位返回空串） */
+function unitFromLabel(label: unknown): string {
+  const m = /×\d+\s*(\S+)/.exec(String(label ?? ''))
+  return m ? m[1] : ''
 }
 
 const nodes = ref<any[]>([])
@@ -67,6 +80,8 @@ export function useRecipeGraph() {
       if (e.labelBgStyle) o.labelBgStyle = e.labelBgStyle
       if (e.labelBgPadding) o.labelBgPadding = e.labelBgPadding
       if (e.labelBgBorderRadius) o.labelBgBorderRadius = e.labelBgBorderRadius
+      // 数量单位（自定义字段，如 '个' / 'ml' / '组'）
+      if ((e as any).unit) o.unit = (e as any).unit
       return o
     })
   }
@@ -120,12 +135,20 @@ export function useRecipeGraph() {
     position = { x: 0, y: 0 },
     showLabel = true,
     quantity = 1,
+    description = '',
   ): RecipeNode {
     return {
       id: genId('item'),
       type: 'item',
       position,
-      data: { kind: 'item', label, image, showLabel, quantity: quantity || 1 },
+      data: {
+        kind: 'item',
+        label,
+        image,
+        showLabel,
+        quantity: quantity || 1,
+        description: description || undefined,
+      },
     }
   }
 
@@ -134,12 +157,19 @@ export function useRecipeGraph() {
     action: string,
     position = { x: 0, y: 0 },
     image = '',
+    description = '',
   ): RecipeNode {
     return {
       id: genId('action'),
       type: 'action',
       position,
-      data: { kind: 'action', label: action, action, image },
+      data: {
+        kind: 'action',
+        label: action,
+        action,
+        image,
+        description: description || undefined,
+      },
     }
   }
 
@@ -168,6 +198,7 @@ export function useRecipeGraph() {
         { x: baseX, y: baseY + i * 90 },
         true,
         1,
+        inp.description,
       )
       createdNodes.push(n)
       return { node: n, quantity: inp.quantity ?? 1 }
@@ -187,14 +218,22 @@ export function useRecipeGraph() {
           y: baseY + ((inputSources.length - 1) * 90) / 2,
         },
         form.actionImage ?? '',
+        form.actionDescription,
       )
       createdNodes.push(actionNode)
     }
 
-    const outputNode = createItemNode(form.output.name, form.output.image ?? '', {
-      x: baseX + 460,
-      y: baseY + ((inputSources.length - 1) * 90) / 2,
-    })
+    const outputNode = createItemNode(
+      form.output.name,
+      form.output.image ?? '',
+      {
+        x: baseX + 460,
+        y: baseY + ((inputSources.length - 1) * 90) / 2,
+      },
+      true,
+      1,
+      form.output.description,
+    )
     // 输出数量记录在输出物品节点上（用于动作 -> 输出 连线展示）
     ;(outputNode.data as any).quantity = form.output.quantity ?? 1
     createdNodes.push(outputNode)
@@ -364,6 +403,98 @@ export function useRecipeGraph() {
     if (persistFlag) persist()
   }
 
+  /**
+   * 配方追踪：计算「要产出 targetQty 个目标产物」时，各基本原料的需求量。
+   * 基本原料 = 不通过任何加工节点生成（没有任何 action→item 输入边）的源头物品节点。
+   * 沿上游按「item → action → item」反向传播，加工节点的输入 / 输出数量取自各连线 label（×N）。
+   * 图中存在环时，环上节点的需求传播会截断，但不会死循环。
+   */
+  function computeBasicMaterials(targetId: string, targetQty: number): MaterialDemand[] {
+    const qty = Math.max(1, Math.floor(targetQty || 1))
+    const allEdges = getEdges.value as any[]
+    const nodeMap = new Map<string, any>()
+    getNodes.value.forEach((n) => nodeMap.set(n.id, n))
+
+    // item 的输入边（action → item）与 action 的输入边（item → action）
+    const itemIn = new Map<string, any[]>()
+    const actionIn = new Map<string, any[]>()
+
+    const push = (m: Map<string, any[]>, k: string, v: any) => {
+      if (!m.has(k)) m.set(k, [])
+      m.get(k)!.push(v)
+    }
+
+    for (const e of allEdges) {
+      const src = nodeMap.get(e.source)
+      const tgt = nodeMap.get(e.target)
+      if (!src || !tgt) continue
+      if (src.data?.kind === 'action' && tgt.data?.kind === 'item') {
+        push(itemIn, e.target, e)
+      } else if (src.data?.kind === 'item' && tgt.data?.kind === 'action') {
+        push(actionIn, e.target, e)
+      }
+    }
+
+    const demand = new Map<string, number>() // item 需求量
+    const demandUnit = new Map<string, string>() // item -> 单位（取自输入连线）
+    demand.set(targetId, qty)
+
+    // DFS 后序收集上游 item（含 target），order 中上游在前
+    const visited = new Set<string>()
+    const order: string[] = []
+    const dfs = (itemId: string) => {
+      if (visited.has(itemId)) return
+      visited.add(itemId)
+      for (const edge of itemIn.get(itemId) ?? []) {
+        for (const ae of actionIn.get(edge.source) ?? []) dfs(ae.source)
+      }
+      order.push(itemId)
+    }
+    dfs(targetId)
+
+    // 第一遍（下游 → 上游）：计算每个加工节点的总生产次数（共享时取最大值）
+    const timesMap = new Map<string, number>()
+    for (const itemId of [...order].reverse()) {
+      const d = demand.get(itemId) ?? 0
+      for (const edge of itemIn.get(itemId) ?? []) {
+        const actId = edge.source
+        const outQty = qtyFromLabel(edge.label)
+        const t = Math.ceil(d / outQty)
+        timesMap.set(actId, Math.max(timesMap.get(actId) ?? 0, t))
+      }
+    }
+
+    // 第二遍：按生产次数累加上游原料需求
+    for (const itemId of [...order].reverse()) {
+      for (const edge of itemIn.get(itemId) ?? []) {
+        const actId = edge.source
+        const t = timesMap.get(actId) ?? 0
+        for (const ae of actionIn.get(actId) ?? []) {
+          const need = t * qtyFromLabel(ae.label)
+          demand.set(ae.source, (demand.get(ae.source) ?? 0) + need)
+          const u = unitFromLabel(ae.label)
+          if (u && !demandUnit.has(ae.source)) demandUnit.set(ae.source, u)
+        }
+      }
+    }
+
+    // 仅保留基本原料（无 action → item 输入边）
+    const result: MaterialDemand[] = []
+    for (const [id, need] of demand) {
+      const n = nodeMap.get(id)
+      if (!n || n.data?.kind !== 'item') continue
+      if ((itemIn.get(id)?.length ?? 0) === 0) {
+        result.push({
+          id,
+          name: (n.data as any).label ?? id,
+          qty: need,
+          unit: demandUnit.get(id),
+        })
+      }
+    }
+    return result
+  }
+
   /** 列出当前画布上已有的物品节点（供配方录入「选择已有产物」使用） */
   function getItemNodes() {
     return nodes.value
@@ -401,6 +532,7 @@ export function useRecipeGraph() {
     importJSON,
     persist,
     loadFromStorage,
+    computeBasicMaterials,
     getItemNodes,
     getActionNodes,
   }
