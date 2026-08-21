@@ -20,7 +20,7 @@ import { useRecipeHighlight } from './composables/useRecipeHighlight'
 import { useCanvasShortcuts } from './composables/useCanvasShortcuts'
 import type { RecipeGraphData } from './types'
 
-const { onNodeClick, onConnect, addEdges, onNodeDragStop, getNodes, getEdges, updateNode, updateEdge } =
+const { onNodeClick, onConnect, addEdges, onNodeDragStop, onPaneClick, getNodes, getEdges, updateNode, updateEdge } =
   useVueFlow()
 const { detectCycle, exportJSON, importJSON, persist, loadFromStorage } =
   useRecipeGraph()
@@ -49,6 +49,11 @@ onMounted(() => {
 // 拖拽节点结束后自动保存位置
 onNodeDragStop(() => persist())
 
+// 点击画布空白处：清除文本选区（避免残留选中高亮）
+onPaneClick(() => {
+  window.getSelection()?.removeAllRanges()
+})
+
 const selectedNodeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
 const formDialogVisible = ref(false)
@@ -58,11 +63,13 @@ const nodeTypes: Record<string, any> = {
   action: ActionNode,
 }
 
-// 选中节点同步到属性面板（抽屉）
+// 选中节点同步到属性面板
 onNodeClick(({ node }) => {
   selectedNodeId.value = node.id
   // 核心交互：点击任意物品节点 -> 高亮完整上游配方链
   highlightFromNode(node.id)
+  // 清除因点击产生的浏览器文本选区，避免属性面板文字呈“选中”态
+  window.getSelection()?.removeAllRanges()
 })
 
 // 连线时记录（供手动拖拽连接使用）
@@ -168,6 +175,10 @@ function onReset() {
         :min-zoom="0.2"
         :max-zoom="2.5"
         fit-view-on-init
+        :selection-key-code="'Control'"
+        :multi-selection-key-code="'Control'"
+        :selection-on-drag="false"
+        :pan-on-drag="true"
       >
         <Background :gap="16" pattern-color="#dcdfe6" />
         <Controls />
@@ -262,6 +273,7 @@ function onReset() {
   font-size: 14px;
   border-bottom: 1px solid #ebeef5;
   background: #fafafa;
+  user-select: none;
 }
 .float-panel :deep(.prop-panel) {
   padding: 12px;
