@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -34,18 +34,30 @@ onNodeDragStop(() => persist())
 
 const selectedNodeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
+const formDialogVisible = ref(false)
 
 const nodeTypes: Record<string, any> = {
   item: ItemNode,
   action: ActionNode,
 }
 
-// 选中节点同步到属性面板
+// 选中节点同步到属性面板（抽屉）
 onNodeClick(({ node }) => {
   selectedNodeId.value = node.id
   // 核心交互：点击任意物品节点 -> 高亮完整上游配方链
   highlightFromNode(node.id)
 })
+
+// 抽屉关闭时清空选中
+const drawerVisible = computed({
+  get: () => !!selectedNodeId.value,
+  set: (v: boolean) => {
+    if (!v) selectedNodeId.value = null
+  },
+})
+function onDrawerClose() {
+  selectedNodeId.value = null
+}
 
 // 连线时记录（供手动拖拽连接使用）
 onConnect((connection) => {
@@ -73,7 +85,11 @@ function onKeydown(e: KeyboardEvent) {
 }
 window.addEventListener('keydown', onKeydown)
 
-// ---- 顶部工具栏：保存 / 导出 / 导入 / 重置 ----
+// ---- 顶部工具栏：添加 / 保存 / 导出 / 导入 / 重置 ----
+function onAddRecipe() {
+  formDialogVisible.value = true
+}
+
 function onSave() {
   const cycle = detectCycle()
   if (cycle.length > 0) {
@@ -141,41 +157,53 @@ function onReset() {
     <header class="toolbar">
       <span class="brand">🎮 游戏配方可视化编辑器</span>
       <div class="tool-actions">
+        <el-button size="small" type="primary" @click="onAddRecipe">+ 添加配方</el-button>
         <el-button size="small" @click="onSave">保存校验</el-button>
         <el-button size="small" type="success" @click="onExport">导出 JSON</el-button>
-        <el-button size="small" type="primary" @click="onImportClick">导入 JSON</el-button>
+        <el-button size="small" @click="onImportClick">导入 JSON</el-button>
         <el-button size="small" type="danger" plain @click="onReset">清空</el-button>
         <input ref="importInput" type="file" accept="application/json" style="display:none" @change="onImportChange" />
       </div>
     </header>
 
-    <div class="body">
-      <!-- 左：表单录入 -->
-      <aside class="left">
-        <FormPanel />
-      </aside>
+    <!-- 画布区 -->
+    <main class="center">
+      <VueFlow
+        :node-types="nodeTypes"
+        :default-viewport="{ zoom: 0.9 }"
+        :min-zoom="0.2"
+        :max-zoom="2.5"
+        fit-view-on-init
+      >
+        <Background :gap="16" pattern-color="#dcdfe6" />
+        <Controls />
+        <MiniMap pannable zoomable />
+      </VueFlow>
+      <div class="hint">提示：点击任意【物品节点】高亮其完整上游配方链；点击空白取消。点击节点可在右侧抽屉编辑。</div>
+    </main>
 
-      <!-- 中：画布 -->
-      <main class="center">
-        <VueFlow
-          :node-types="nodeTypes"
-          :default-viewport="{ zoom: 0.9 }"
-          :min-zoom="0.2"
-          :max-zoom="2.5"
-          fit-view-on-init
-        >
-          <Background :gap="16" pattern-color="#dcdfe6" />
-          <Controls />
-          <MiniMap pannable zoomable />
-        </VueFlow>
-        <div class="hint">提示：点击任意【物品节点】高亮其完整上游配方链；点击空白取消。</div>
-      </main>
+    <!-- 配方录入弹窗 -->
+    <el-dialog
+      v-model="formDialogVisible"
+      title="配方录入"
+      width="460px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <FormPanel @submitted="formDialogVisible = false" />
+    </el-dialog>
 
-      <!-- 右：属性面板 -->
-      <aside class="right">
-        <PropertyPanel v-model="selectedNodeId" />
-      </aside>
-    </div>
+    <!-- 选中节点后的右侧属性抽屉 -->
+    <el-drawer
+      v-model="drawerVisible"
+      title="属性面板"
+      direction="rtl"
+      size="320px"
+      :with-header="true"
+      @close="onDrawerClose"
+    >
+      <PropertyPanel v-model="selectedNodeId" />
+    </el-drawer>
   </div>
 </template>
 
@@ -197,27 +225,14 @@ function onReset() {
   font-weight: 700;
   font-size: 16px;
 }
-.body {
-  flex: 1;
+.tool-actions {
   display: flex;
-  min-height: 0;
-}
-.left {
-  width: 300px;
-  border-right: 1px solid #e4e7ed;
-  background: #fafafa;
-  overflow: hidden;
+  gap: 8px;
 }
 .center {
   flex: 1;
   position: relative;
   min-width: 0;
-}
-.right {
-  width: 300px;
-  border-left: 1px solid #e4e7ed;
-  background: #fafafa;
-  overflow: hidden;
 }
 .hint {
   position: absolute;

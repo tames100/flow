@@ -9,6 +9,8 @@ import { useImageUpload } from '../composables/useImageUpload'
 const { addRecipeFromForm, detectCycle, getItemNodes } = useRecipeGraph()
 const { allActions } = useActionTypes()
 
+const emit = defineEmits<{ submitted: [] }>()
+
 const form = reactive<RecipeForm>({
   inputs: [{ name: '', image: '' }],
   action: '合成',
@@ -120,6 +122,9 @@ function submit() {
     ElMessage.success('配方已生成')
   }
 
+  // 关闭弹窗
+  emit('submitted')
+
   // 重置输入行（保留一行）
   form.inputs = [{ name: '', image: '' }]
   form.output = { name: '', image: '' }
@@ -131,8 +136,6 @@ function submit() {
 
 <template>
   <div class="form-panel">
-    <h3 class="panel-title">配方录入</h3>
-
     <!-- 隐藏 file input（本地文件选择共用） -->
     <input ref="inputUpload.fileInput" type="file" accept="image/*" style="display: none" />
     <input ref="outputUpload.fileInput" type="file" accept="image/*" style="display: none" />
