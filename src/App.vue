@@ -27,7 +27,7 @@ import {
   type RecipeGraphData,
 } from './composables'
 
-const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStart, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode, updateNode, getNodes } =
+const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStart, onNodeDrag, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode, updateNode, getNodes } =
   useVueFlow()
 const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel } =
   useRecipeGraph()
@@ -90,39 +90,47 @@ onBeforeUnmount(() => {
   if (autoSaveTimer) window.clearInterval(autoSaveTimer)
 })
 
-// ---- Ctrl + 左键拖动节点 = 复制节点 ----
-// 按住 Ctrl/⌘ 拖动节点：松手后在拖动终点生成副本（复制除 id 外的所有值，id 重新生成），
-// 原节点（及同组选中节点）还原到拖动前位置。
-const dragCopyInfo = ref<{ id: string; startPos: { x: number; y: number }; group: Map<string, { x: number; y: number }> } | null>(null)
+// ---- Ctrl + 左键拖动节点 = 复制并拖出副本 ----
+// 按住 Ctrl/⌘ 拖动节点：拖动开始时立即在原点生成副本（新 id，完整复制），
+// 拖动过程中原件（及同组选中节点）钉在原位不动，副本跟随鼠标移动；
+// 松手后副本留在终点、原件留在原位。
+const dragCopyInfo = ref<{ id: string; copyId: string; group: Map<string, { x: number; y: number }> } | null>(null)
 
 onNodeDragStart(({ node, event }) => {
   if (!('ctrlKey' in event)) return
   const e = event as MouseEvent
   if (!e.ctrlKey && !e.metaKey) return
-  // 记录被拖节点与同组选中节点的起始位置，拖动结束后整体还原
+  // 立即在原点生成副本（复制除 id 外的所有值，id 重新生成）
+  const copy = duplicateNode(node.id, { ...node.position })
+  if (!copy) return
+  // 记录原件与同组选中节点的起始位置（拖动过程中保持原位）
   const group = new Map<string, { x: number; y: number }>()
   getNodes.value.forEach((n) => {
     if (n.selected) group.set(n.id, { x: n.position.x, y: n.position.y })
   })
   group.set(node.id, { x: node.position.x, y: node.position.y })
-  dragCopyInfo.value = { id: node.id, startPos: { ...node.position }, group }
+  dragCopyInfo.value = { id: node.id, copyId: copy.id, group }
+})
+
+onNodeDrag(({ node }) => {
+  const info = dragCopyInfo.value
+  if (!info || info.id !== node.id) return
+  const pos = { x: node.position.x, y: node.position.y }
+  // 原件（及同组节点）钉回原位，副本跟随鼠标
+  info.group.forEach((p, id) => updateNode(id, { position: { ...p } }))
+  updateNode(info.copyId, { position: pos })
 })
 
 onNodeDragStop(({ node }) => {
   const info = dragCopyInfo.value
   dragCopyInfo.value = null
-  if (!info || info.id !== node.id) {
-    // 普通拖拽：自动保存最新位置
+  if (info && info.id === node.id) {
+    // 原件（及同组节点）复位；副本保持终点位置
+    info.group.forEach((p, id) => updateNode(id, { position: { ...p } }))
     persist()
     return
   }
-  const moved = Math.abs(node.position.x - info.startPos.x) + Math.abs(node.position.y - info.startPos.y)
-  if (moved >= 10) {
-    // 确为拖动：在拖动终点生成副本（完整复制，新 id）
-    duplicateNode(node.id, { x: node.position.x, y: node.position.y })
-  }
-  // 原节点（及同组节点）还原到拖动前位置
-  info.group.forEach((pos, id) => updateNode(id, { position: { ...pos } }))
+  // 普通拖拽：自动保存最新位置
   persist()
 })
 
@@ -152,7 +160,16 @@ onEdgeClick(({ edge }) => {
 })
 
 // 选中节点同步到属性面板
-onNodeClick(({ node }) => {
+onNodeClick(({ node, event }) => {
+  // Ctrl/⌘ + 点击节点 = 立即复制当前节点（新 id，完整复制），副本偏移显示并选中
+  if ('ctrlKey' in event && (event.ctrlKey || event.metaKey)) {
+    const copy = duplicateNode(node.id, { x: node.position.x + 24, y: node.position.y + 24 })
+    selectedNodeId.value = copy?.id ?? null
+    selectedEdgeId.value = null
+    clearHighlight()
+    window.getSelection()?.removeAllRanges()
+    return
+  }
   selectedNodeId.value = node.id
   selectedEdgeId.value = null
   // 核心交互：点击任意物品节点 -> 高亮完整上游配方链
@@ -329,7 +346,8 @@ const shortcutsList = [
   { keys: '滚轮', desc: '缩放画布' },
   { keys: '点击节点', desc: '选中并在属性面板编辑，高亮其上游配方链' },
   { keys: '点击连线', desc: '编辑连线数量与样式（线型 / 颜色 / 动画 / 端点）' },
-  { keys: 'Ctrl + 左键拖动节点', desc: '复制节点（生成新 ID，完整保留全部属性）' },
+  { keys: 'Ctrl + 左键点击节点', desc: '立即复制节点（新 ID，副本偏移显示）' },
+  { keys: 'Ctrl + 左键拖动节点', desc: '复制并拖出副本（原件留在原位）' },
   { keys: 'Ctrl + 左键拖动', desc: '框选多个节点' },
   { keys: '点击空白', desc: '取消选中 / 取消高亮' },
   { keys: '右键画布', desc: '打开菜单：创建物品/加工动作节点' },
