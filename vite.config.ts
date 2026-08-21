@@ -18,6 +18,19 @@ export default defineConfig({
       dts: 'src/components.d.ts',
     }),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        // 第三方库独立分包：主包更小、更新时其余包可命中缓存
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('node_modules/@vue-flow/')) return 'vue-flow'
+          if (id.includes('node_modules/vue/') || id.includes('node_modules/@vue/')) return 'vue'
+          if (id.includes('node_modules/element-plus')) return 'element-plus'
+        },
+      },
+    },
+  },
   server: {
     port: 8080,
     open: true,

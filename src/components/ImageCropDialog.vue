@@ -47,8 +47,8 @@ function initCropper() {
   })
 }
 
-function onRatioChange(v: number) {
-  cropper.value?.setAspectRatio(v || NaN)
+function onRatioChange(v: string | number | boolean | undefined) {
+  cropper.value?.setAspectRatio(Number(v) || NaN)
 }
 
 function doConfirm() {

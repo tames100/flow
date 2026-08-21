@@ -14,7 +14,8 @@ import PropertyPanel from './components/PropertyPanel.vue'
 import ItemNode from './components/nodes/ItemNode.vue'
 import ActionNode from './components/nodes/ActionNode.vue'
 import ImagePreview from './components/ImagePreview.vue'
-import ImageCropDialog from './components/ImageCropDialog.vue'
+// 裁剪弹窗按需加载（cropperjs 单独分包，仅打开裁剪时才请求）
+const ImageCropDialog = defineAsyncComponent(() => import('./components/ImageCropDialog.vue'))
 import ContextMenu from './components/ContextMenu.vue'
 
 import {
@@ -32,6 +33,7 @@ const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createIte
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
 const { open: openContextMenu } = useContextMenu()
+const crop = useImageCrop()
 
 const shortcutsVisible = ref(false)
 
