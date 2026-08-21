@@ -13,7 +13,7 @@ import { useImagePreview } from './useImagePreview'
  * - Ctrl/Cmd + C：复制选中节点   Ctrl/Cmd + V：粘贴（偏移放置）
  * - Esc：取消选中 / 取消高亮
  */
-export function useCanvasShortcuts(opts: { onSelectAll: () => void; onEscape: () => void }) {
+export function useCanvasShortcuts(opts: { onEscape: () => void }) {
   const { getNodes, getEdges, removeNodes, removeEdges, updateNode, updateEdge } = useVueFlow()
   const { duplicateNode, persist } = useRecipeGraph()
   const { visible: previewVisible } = useImagePreview()
@@ -75,19 +75,8 @@ export function useCanvasShortcuts(opts: { onSelectAll: () => void; onEscape: ()
     }
   }
 
-  function onContextMenu(e: MouseEvent) {
-    // 右键点击画布空白区域 -> 全选
-    const target = e.target as HTMLElement
-    if (target && target.classList.contains('vue-flow__pane')) {
-      e.preventDefault()
-      opts.onSelectAll()
-    }
-  }
-
   window.addEventListener('keydown', onKey)
-  window.addEventListener('contextmenu', onContextMenu)
   onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKey)
-    window.removeEventListener('contextmenu', onContextMenu)
   })
 }

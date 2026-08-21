@@ -21,21 +21,14 @@ import { useRecipeHighlight } from './composables/useRecipeHighlight'
 import { useCanvasShortcuts } from './composables/useCanvasShortcuts'
 import type { RecipeGraphData } from './types'
 
-const { onNodeClick, onConnect, addEdges, onNodeDragStop, onPaneClick, getNodes, getEdges, updateNode, updateEdge } =
+const { onNodeClick, onConnect, addEdges, onNodeDragStop, onPaneClick } =
   useVueFlow()
 const { detectCycle, exportJSON, importJSON, persist, loadFromStorage } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
 
-// 右键点击画布空白：选中全部节点
-function selectAll() {
-  getNodes.value.forEach((n) => updateNode(n.id, { selected: true } as any))
-  getEdges.value.forEach((e) => updateEdge(e as any, { selected: true } as any))
-}
-
 // 画布快捷键
 useCanvasShortcuts({
-  onSelectAll: selectAll,
   onEscape: () => {
     clearHighlight()
     selectedNodeId.value = null
@@ -179,7 +172,7 @@ function onReset() {
         :selection-key-code="'Control'"
         :multi-selection-key-code="'Control'"
         :selection-on-drag="false"
-        :pan-on-drag="true"
+        :pan-on-drag="[0]"
       >
         <Background :gap="16" pattern-color="#dcdfe6" />
         <Controls />
