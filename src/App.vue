@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -64,17 +64,6 @@ onNodeClick(({ node }) => {
   // 核心交互：点击任意物品节点 -> 高亮完整上游配方链
   highlightFromNode(node.id)
 })
-
-// 抽屉关闭时清空选中
-const drawerVisible = computed({
-  get: () => !!selectedNodeId.value,
-  set: (v: boolean) => {
-    if (!v) selectedNodeId.value = null
-  },
-})
-function onDrawerClose() {
-  selectedNodeId.value = null
-}
 
 // 连线时记录（供手动拖拽连接使用）
 onConnect((connection) => {
@@ -184,7 +173,17 @@ function onReset() {
         <Controls />
         <MiniMap pannable zoomable />
       </VueFlow>
-      <div class="hint">提示：点击任意【物品节点】高亮其完整上游配方链；点击空白取消。点击节点可在右侧抽屉编辑。</div>
+
+      <!-- 选中节点后的属性面板：画布内悬浮卡片（不覆盖工具栏、不置暗画布） -->
+      <div v-if="selectedNodeId" class="float-panel">
+        <div class="float-head">
+          <span>属性面板</span>
+          <el-button text size="small" circle @click="selectedNodeId = null">✕</el-button>
+        </div>
+        <PropertyPanel v-model="selectedNodeId" />
+      </div>
+
+      <div class="hint">提示：点击任意【物品节点】高亮其完整上游配方链；点击空白取消。点击节点可在右侧面板编辑，可继续点其他节点切换。</div>
     </main>
 
     <!-- 配方录入弹窗 -->
@@ -197,20 +196,6 @@ function onReset() {
     >
       <FormPanel @submitted="formDialogVisible = false" />
     </el-dialog>
-
-    <!-- 选中节点后的右侧属性抽屉（非模态：画布保持明亮且可继续点击切换节点） -->
-    <el-drawer
-      v-model="drawerVisible"
-      title="属性面板"
-      direction="rtl"
-      size="320px"
-      :with-header="true"
-      :modal="false"
-      :close-on-press-escape="true"
-      @close="onDrawerClose"
-    >
-      <PropertyPanel v-model="selectedNodeId" />
-    </el-drawer>
   </div>
 </template>
 
@@ -251,5 +236,36 @@ function onReset() {
   padding: 4px 10px;
   border-radius: 6px;
   pointer-events: none;
+}
+/* 画布内悬浮属性面板 */
+.float-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 300px;
+  max-height: calc(100% - 24px);
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.float-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: 1px solid #ebeef5;
+  background: #fafafa;
+}
+.float-panel :deep(.prop-panel) {
+  padding: 12px;
+  height: auto;
+  overflow-y: auto;
 }
 </style>

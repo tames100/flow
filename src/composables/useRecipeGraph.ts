@@ -138,6 +138,10 @@ export function useRecipeGraph() {
         target: actionNode.id,
         class: 'recipe-edge',
         label: s.quantity > 1 ? `×${s.quantity}` : '',
+        labelStyle: { fill: '#409eff', fontWeight: 700, fontSize: '12px' },
+        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 4,
       })),
       {
         id: genId('e'),
