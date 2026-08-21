@@ -8,6 +8,7 @@ import type {
   RecipeNode,
   RecipeNodeData,
 } from '../types'
+import { DEFAULT_UNIT } from '../types'
 import { useActionTypes } from './useActionTypes'
 
 const STORAGE_KEY = 'vflow_graph_data'
@@ -28,6 +29,11 @@ function qtyFromLabel(label: unknown): number {
 function unitFromLabel(label: unknown): string {
   const m = /×\d+\s*(\S+)/.exec(String(label ?? ''))
   return m ? m[1] : ''
+}
+
+/** 生成连线 label：数量 + 单位（有单位或数量 >1 时显示） */
+function edgeLabel(qty: number, unit: string): string {
+  return qty > 1 || unit ? `×${qty}${unit ? ' ' + unit : ''}` : ''
 }
 
 const nodes = ref<any[]>([])
@@ -80,8 +86,9 @@ export function useRecipeGraph() {
       if (e.labelBgStyle) o.labelBgStyle = e.labelBgStyle
       if (e.labelBgPadding) o.labelBgPadding = e.labelBgPadding
       if (e.labelBgBorderRadius) o.labelBgBorderRadius = e.labelBgBorderRadius
-      // 数量单位（自定义字段，如 '个' / 'ml' / '组'）
-      if ((e as any).unit) o.unit = (e as any).unit
+      // 数量单位（如 '个' / 'ml' / '组'）
+      const unit = (e as any).unit
+      if (unit) o.unit = unit
       return o
     })
   }
@@ -158,6 +165,7 @@ export function useRecipeGraph() {
     position = { x: 0, y: 0 },
     image = '',
     description = '',
+    outputUnit = DEFAULT_UNIT,
   ): RecipeNode {
     return {
       id: genId('action'),
@@ -169,8 +177,62 @@ export function useRecipeGraph() {
         action,
         image,
         description: description || undefined,
+        outputUnit: outputUnit || DEFAULT_UNIT,
       },
     }
+  }
+
+  /**
+   * 解析一条连线（由其 source / target 节点）应使用的单位，遵循继承规则：
+   * - 输出边（action → item）：取加工节点的「输出单位」（默认「个」）。
+   * - 输入边（item → action）：继承生成该物品节点的上游加工节点输出单位；若物品是基本原料（无上游加工）则默认「个」。
+   */
+  function resolveUnit(sourceId: string, _targetId: string): string {
+    const src = findNode(sourceId)
+    if (src?.data?.kind === 'action') {
+      return (src.data.outputUnit as string) || DEFAULT_UNIT
+    }
+    // 输入边：找生成该物品的加工节点
+    const producer = getEdges.value.find(
+      (e) => e.target === sourceId && findNode(e.source)?.data?.kind === 'action',
+    )
+    if (producer) {
+      return (findNode(producer.source)?.data as any)?.outputUnit || DEFAULT_UNIT
+    }
+    return DEFAULT_UNIT
+  }
+
+  /** 按继承规则重算所有连线的单位并同步 label（用于导入旧数据等场景） */
+  function refreshEdgeUnits() {
+    getEdges.value.forEach((e) => {
+      const unit = resolveUnit(e.source, e.target)
+      Object.assign(e, { unit, label: edgeLabel(qtyFromLabel(e.label), unit) })
+    })
+  }
+
+  /**
+   * 加工节点「输出单位」变更后，同步继承关系：
+   * - 该加工节点的所有输出边（action → item）单位 = 新输出单位；
+   * - 以这些产物为输入的下游加工节点，其输入边单位同样继承为新输出单位。
+   * 例如：搅拌输出单位改为 ml → 「搅拌→B」输出边与「B→注液」输入边都变为 ml。
+   */
+  function syncUnitFromAction(actionId: string) {
+    const act = findNode(actionId)
+    if (!act) return
+    const unit = (act.data as any)?.outputUnit || DEFAULT_UNIT
+    getEdges.value.forEach((e) => {
+      if (e.source !== actionId) return
+      const src = findNode(e.source)
+      if (src?.data?.kind !== 'action') return
+      Object.assign(e, { unit, label: edgeLabel(qtyFromLabel(e.label), unit) })
+      // 下游加工节点的输入边继承同一单位
+      getEdges.value.forEach((de) => {
+        if (de.source === e.target && findNode(de.target)?.data?.kind === 'action') {
+          Object.assign(de, { unit, label: edgeLabel(qtyFromLabel(de.label), unit) })
+        }
+      })
+    })
+    persist()
   }
 
   /**
@@ -219,6 +281,7 @@ export function useRecipeGraph() {
         },
         form.actionImage ?? '',
         form.actionDescription,
+        form.actionOutputUnit,
       )
       createdNodes.push(actionNode)
     }
@@ -239,24 +302,30 @@ export function useRecipeGraph() {
     createdNodes.push(outputNode)
 
     const outQty = form.output.quantity ?? 1
+    const actionOutUnit = (actionNode.data as any)?.outputUnit || DEFAULT_UNIT
 
     const newEdges: RecipeEdge[] = [
-      ...inputSources.map((s) => ({
-        id: genId('e'),
-        source: s.node.id,
-        target: actionNode.id,
-        class: 'recipe-edge',
-        // 默认虚线 + 流动动画（有向图）
-        animated: true,
-        style: { stroke: '#409eff', strokeWidth: 2, strokeDasharray: '8 4' },
-        // 输入边箭头蓝色（指向加工节点）
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#409eff', width: 16, height: 16 },
-        label: s.quantity > 1 ? `×${s.quantity}` : '',
-        labelStyle: { fill: '#409eff', fontWeight: 700, fontSize: '12px' },
-        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
-        labelBgPadding: [4, 2] as [number, number],
-        labelBgBorderRadius: 4,
-      })),
+      // 输入边：单位遵循继承规则（基本原料默认「个」）
+      ...inputSources.map((s) => {
+        const unit = resolveUnit(s.node.id, actionNode.id)
+        return {
+          id: genId('e'),
+          source: s.node.id,
+          target: actionNode.id,
+          class: 'recipe-edge',
+          // 默认虚线 + 流动动画（有向图）
+          animated: true,
+          style: { stroke: '#409eff', strokeWidth: 2, strokeDasharray: '8 4' },
+          // 输入边箭头蓝色（指向加工节点）
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#409eff', width: 16, height: 16 },
+          unit,
+          label: edgeLabel(s.quantity ?? 1, unit),
+          labelStyle: { fill: '#409eff', fontWeight: 700, fontSize: '12px' },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+          labelBgPadding: [4, 2] as [number, number],
+          labelBgBorderRadius: 4,
+        }
+      }),
       {
         id: genId('e'),
         source: actionNode.id,
@@ -265,9 +334,10 @@ export function useRecipeGraph() {
         // 默认虚线 + 流动动画（有向图）
         animated: true,
         style: { stroke: '#e6a23c', strokeWidth: 2, strokeDasharray: '8 4' },
-        // 输出边箭头橙色（从加工节点指出）
+        // 输出边箭头橙色（从加工节点指出），单位 = 加工节点输出单位
         markerEnd: { type: MarkerType.ArrowClosed, color: '#e6a23c', width: 16, height: 16 },
-        label: outQty > 1 ? `×${outQty}` : '',
+        unit: actionOutUnit,
+        label: edgeLabel(outQty, actionOutUnit),
         labelStyle: { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' },
         labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
         labelBgPadding: [4, 2] as [number, number],
@@ -380,8 +450,13 @@ export function useRecipeGraph() {
       const srcNode = findNode(e.source)
       const isOut = srcNode?.data?.kind === 'action'
       const color = isOut ? '#e6a23c' : '#409eff'
+      // 单位：优先保留导入的手工单位，否则按继承规则解析（默认「个」）
+      const unit = (e as any).unit || resolveUnit(e.source, e.target)
       return {
         ...e,
+        unit,
+        // 无单位数据自动补 label（含继承单位）；已有单位的数据保留原 label
+        label: (e as any).unit ? (e as any).label : edgeLabel(qtyFromLabel((e as any).label), unit),
         animated: e.animated ?? true,
         style: e.style ?? { stroke: color, strokeWidth: 2, strokeDasharray: '8 4' },
         markerEnd:
@@ -515,6 +590,7 @@ export function useRecipeGraph() {
         name: (n.data as any).label ?? '',
         action: (n.data as any).action ?? '',
         image: (n.data as any).image ?? '',
+        outputUnit: (n.data as any)?.outputUnit || DEFAULT_UNIT,
       }))
   }
 
@@ -533,6 +609,10 @@ export function useRecipeGraph() {
     persist,
     loadFromStorage,
     computeBasicMaterials,
+    resolveUnit,
+    edgeLabel,
+    syncUnitFromAction,
+    refreshEdgeUnits,
     getItemNodes,
     getActionNodes,
   }

@@ -15,6 +15,7 @@ import PropertyPanel from './components/PropertyPanel.vue'
 import ItemNode from './components/nodes/ItemNode.vue'
 import ActionNode from './components/nodes/ActionNode.vue'
 import ImagePreview from './components/ImagePreview.vue'
+import ImageCropDialog from './components/ImageCropDialog.vue'
 import ContextMenu from './components/ContextMenu.vue'
 
 import {
@@ -27,7 +28,7 @@ import {
 
 const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode } =
   useVueFlow()
-const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode } =
+const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
 const { open: openContextMenu } = useContextMenu()
@@ -134,6 +135,8 @@ onConnect((connection) => {
   const srcNode = findNode(connection.source)
   const isOut = srcNode?.data?.kind === 'action'
   const color = isOut ? '#e6a23c' : '#409eff'
+  // 新连线默认单位：加工节点输出单位 / 上游继承单位 / 「个」
+  const unit = resolveUnit(connection.source, connection.target)
   addEdges([
     {
       ...connection,
@@ -141,13 +144,19 @@ onConnect((connection) => {
       class: 'recipe-edge',
       animated: true,
       style: { stroke: color, strokeWidth: 2, strokeDasharray: '8 4' },
+      unit,
+      label: edgeLabel(1, unit),
+      labelStyle: { fill: color, fontWeight: 700, fontSize: '12px' },
+      labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+      labelBgPadding: [4, 2] as [number, number],
+      labelBgBorderRadius: 4,
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color,
         width: 16,
         height: 16,
       },
-    },
+    } as any,
   ])
   persist()
   const cycle = detectCycle()
@@ -361,6 +370,9 @@ const shortcutsList = [
 
     <!-- 全局图片放大预览 -->
     <ImagePreview />
+
+    <!-- 全局图片裁剪弹窗（上传图片时先裁剪再写入节点） -->
+    <ImageCropDialog />
 
     <!-- 自定义右键菜单 -->
     <ContextMenu

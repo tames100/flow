@@ -3,6 +3,9 @@ import type { Node, Edge } from '@vue-flow/core'
 /** 内置加工动作（默认值，用户可在此基础上自定义扩展） */
 export const DEFAULT_ACTIONS: string[] = ['合成', '搅拌', '切割', '熔炼']
 
+/** 默认数量单位 */
+export const DEFAULT_UNIT = '个'
+
 /** 内置数量单位（默认值，画布上出现过的单位会自动并入下拉选项） */
 export const DEFAULT_UNITS: string[] = ['个', 'ml', '组', '份', 'kg']
 
@@ -32,12 +35,15 @@ export interface ActionNodeData {
   image: string
   /** 节点解释（展示在节点卡片上） */
   description?: string
+  /** 输出单位（加工节点产出物的单位，下游加工节点的输入单位自动继承该值） */
+  outputUnit?: string
 }
 
 export type RecipeNodeData = ItemNodeData | ActionNodeData
 
 export type RecipeNode = Node<RecipeNodeData>
-export type RecipeEdge = Edge
+/** 画布连线：unit 为数量单位（默认「个」，遵循加工节点输出单位继承） */
+export type RecipeEdge = Edge & { unit?: string }
 
 /** 配方追踪：某种基本原料的需求量 */
 export interface MaterialDemand {
@@ -66,6 +72,8 @@ export interface RecipeForm {
   actionImage?: string
   /** 加工动作解释 */
   actionDescription?: string
+  /** 加工节点输出单位（其产出物的单位，下游输入单位自动继承） */
+  actionOutputUnit?: string
   /**
    * 若选择了画布中已有的加工节点，记录其节点 id。
    * 配合 reuseActionImage 决定是复用该节点还是新建同名独立节点。

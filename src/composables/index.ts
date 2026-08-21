@@ -11,6 +11,7 @@ export * from './useContextMenu'
 export * from './useActionTypes'
 export * from './useImageUpload'
 export * from './useImagePreview'
+export * from './useImageCrop'
 
 export { DEFAULT_ACTIONS } from '../types'
 export type {

@@ -2,13 +2,21 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useVueFlow, MarkerType } from '@vue-flow/core'
-import { useRecipeGraph, useActionTypes, useImagePreview } from '../composables'
-import { DEFAULT_UNITS } from '../types'
+import { useRecipeGraph, useActionTypes, useImagePreview, useImageCrop } from '../composables'
+import { DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 
 const { findNode, updateNode, getEdges, removeEdges } = useVueFlow()
-const { deleteNode, duplicateNode, persist, computeBasicMaterials } = useRecipeGraph()
+const {
+  deleteNode,
+  duplicateNode,
+  persist,
+  computeBasicMaterials,
+  resolveUnit,
+  syncUnitFromAction,
+} = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 const { openImage } = useImagePreview()
+const { open: openCrop } = useImageCrop()
 
 // 由 App 通过 v-model 同步选中节点 / 连线
 const props = defineProps<{
@@ -69,6 +77,19 @@ const action = computed({
       addAction(v)
       updateNode(node.value.id, { data: { ...node.value.data, action: v, label: v } })
       persist()
+    }
+  },
+})
+
+/** 加工节点输出单位：修改后自动同步到其输出边及下游加工节点输入边 */
+const outputUnit = computed({
+  get: () => (node.value?.data as any)?.outputUnit || DEFAULT_UNIT,
+  set: (v: string) => {
+    if (node.value) {
+      updateNode(node.value.id, {
+        data: { ...node.value.data, outputUnit: v || DEFAULT_UNIT },
+      })
+      syncUnitFromAction(node.value.id)
     }
   },
 })
@@ -255,20 +276,27 @@ function pickImage() {
   fileInput.value?.click()
 }
 
-function onFileChange(e: Event) {
+async function onFileChange(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
   if (!f) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    const dataURL = reader.result as string
-    if (node.value) {
-      updateNode(node.value.id, { data: { ...node.value.data, image: dataURL } })
-      persist()
-    }
+  const dataURL = await readFileAsDataURL(f)
+  // 上传后先裁剪，确认后才写入节点（取消则忽略）
+  const cropped = await openCrop(dataURL)
+  if (cropped && node.value) {
+    updateNode(node.value.id, { data: { ...node.value.data, image: cropped } })
+    persist()
     ElMessage.success('图片已替换')
   }
-  reader.readAsDataURL(f)
   ;(e.target as HTMLInputElement).value = ''
+}
+
+function readFileAsDataURL(f: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const reader = new FileReader()
+    reader.onload = () => res(reader.result as string)
+    reader.onerror = rej
+    reader.readAsDataURL(f)
+  })
 }
 
 // 加工动作图标图片替换（仅动作节点）
@@ -276,19 +304,16 @@ function pickActionImage() {
   actionFileInput.value?.click()
 }
 
-function onActionFileChange(e: Event) {
+async function onActionFileChange(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
   if (!f) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    const dataURL = reader.result as string
-    if (node.value) {
-      updateNode(node.value.id, { data: { ...node.value.data, image: dataURL } })
-      persist()
-    }
+  const dataURL = await readFileAsDataURL(f)
+  const cropped = await openCrop(dataURL)
+  if (cropped && node.value) {
+    updateNode(node.value.id, { data: { ...node.value.data, image: cropped } })
+    persist()
     ElMessage.success('动作图标已替换')
   }
-  reader.readAsDataURL(f)
   ;(e.target as HTMLInputElement).value = ''
 }
 
@@ -437,7 +462,7 @@ watch(edgeId, (v) => emit('update:edge', v))
                 @update:model-value="onQtyInput(e, $event)"
               />
               <el-select
-                :model-value="unitOf(e)"
+                :model-value="unitOf(e) || resolveUnit(e.source, e.target)"
                 placeholder="单位"
                 clearable
                 filterable
@@ -450,7 +475,7 @@ watch(edgeId, (v) => emit('update:edge', v))
                 <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
               </el-select>
             </div>
-            <div class="qty-tip">指向本加工节点的连线均为输入</div>
+            <div class="qty-tip">指向本加工节点的连线均为输入，单位默认继承上游加工节点的输出单位</div>
           </el-form-item>
           <el-form-item v-if="outEdges.length" label="输出数量">
             <div v-for="e in outEdges" :key="e.id" class="qty-row">
@@ -465,7 +490,7 @@ watch(edgeId, (v) => emit('update:edge', v))
                 @update:model-value="onQtyInput(e, $event)"
               />
               <el-select
-                :model-value="unitOf(e)"
+                :model-value="unitOf(e) || resolveUnit(e.source, e.target)"
                 placeholder="单位"
                 clearable
                 filterable
@@ -478,7 +503,7 @@ watch(edgeId, (v) => emit('update:edge', v))
                 <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
               </el-select>
             </div>
-            <div class="qty-tip">本加工节点指出的连线均为输出</div>
+            <div class="qty-tip">本加工节点指出的连线均为输出，单位与「输出单位」一致</div>
           </el-form-item>
           <el-form-item label="加工动作">
             <el-select
@@ -490,6 +515,18 @@ watch(edgeId, (v) => emit('update:edge', v))
               placeholder="选择或输入自定义动作"
             >
               <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="输出单位（下游输入自动继承）">
+            <el-select
+              v-model="outputUnit"
+              style="width: 100%"
+              filterable
+              allow-create
+              default-first-option
+              placeholder="选择或输入单位"
+            >
+              <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
             </el-select>
           </el-form-item>
           <el-form-item label="动作图标">

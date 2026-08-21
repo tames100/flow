@@ -20,6 +20,9 @@ importers:
       '@vue-flow/minimap':
         specifier: ^1.5.0
         version: 1.5.4(@vue-flow/core@1.48.2(vue@3.5.41(typescript@6.0.3)))(vue@3.5.41(typescript@6.0.3))
+      cropperjs:
+        specifier: 1.6.2
+        version: 1.6.2
       element-plus:
         specifier: ^2.8.8
         version: 2.14.4(vue@3.5.41(typescript@6.0.3))
@@ -313,6 +316,9 @@ packages:
 
   async-validator@4.2.5:
     resolution: {integrity: sha512-7HhHjtERjqlNbZtqNqy2rckN/SpOOlmDliet+lP7k+eKZEjPk3DgyeU9lIXLdeLz0uBbbVp+9Qdow9wJWgwwfg==}
+
+  cropperjs@1.6.2:
+    resolution: {integrity: sha512-nhymn9GdnV3CqiEHJVai54TULFAE3VshJTXSqSJKa8yXAKyBKDWdhHarnlIPrshJ0WMFTGuFvG02YjLXfPiuOA==}
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
@@ -850,6 +856,8 @@ snapshots:
   alien-signals@3.2.1: {}
 
   async-validator@4.2.5: {}
+
+  cropperjs@1.6.2: {}
 
   csstype@3.2.3: {}
 

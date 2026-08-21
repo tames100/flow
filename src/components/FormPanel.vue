@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRecipeGraph, useActionTypes, useImageUpload, type RecipeForm } from '../composables'
+import { useRecipeGraph, useActionTypes, useImageUpload, useImageCrop, type RecipeForm } from '../composables'
+import { DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 
 const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
+const { open: openCrop, state: cropState } = useImageCrop()
 
 const emit = defineEmits<{ submitted: [] }>()
 
@@ -13,6 +15,7 @@ const form = reactive<RecipeForm>({
   action: '合成',
   actionImage: '',
   actionDescription: '',
+  actionOutputUnit: DEFAULT_UNIT,
   actionRefId: undefined,
   reuseActionImage: true,
   output: { name: '', image: '', quantity: 1, description: '' },
@@ -34,13 +37,19 @@ function setImage(target: string | number, dataUrl: string) {
   else form.inputs[target as number].image = dataUrl
 }
 
+/** 上传图片统一入口：先打开裁剪弹窗，用户确认后才写入目标图片槽（取消则忽略） */
+async function cropAndSet(target: string | number, dataUrl: string) {
+  const cropped = await openCrop(dataUrl)
+  if (cropped) setImage(target, cropped)
+}
+
 function pickImage(upload: ReturnType<typeof useImageUpload>, target: string | number) {
   const inp = upload.fileInput.value
   if (!inp) return
   inp.onchange = (e) => {
     const f = (e.target as HTMLInputElement).files?.[0]
     if (!f) return
-    upload.handleFile(f).then(() => setImage(target, upload.image.value))
+    upload.handleFile(f).then(() => cropAndSet(target, upload.image.value))
   }
   inp.click()
 }
@@ -51,17 +60,18 @@ async function onDrop(target: string | number, e: DragEvent) {
   pasteTarget.value = target
   const upload = target === 'output' ? outputUpload : target === 'action' ? actionUpload : inputUpload
   await upload.handleFile(e.dataTransfer?.files?.[0])
-  setImage(target, upload.image.value)
+  await cropAndSet(target, upload.image.value)
 }
 
-// 全局粘贴：写入当前激活的图片槽
+// 全局粘贴：写入当前激活的图片槽（裁剪弹窗打开期间忽略，避免干扰裁剪操作）
 async function onPaste(e: ClipboardEvent) {
+  if (cropState.visible) return
   const upload = pasteTarget.value === 'output' ? outputUpload
     : pasteTarget.value === 'action' ? actionUpload
     : inputUpload
   await upload.onPaste(e)
   if (!upload.image.value) return
-  setImage(pasteTarget.value, upload.image.value)
+  await cropAndSet(pasteTarget.value, upload.image.value)
 }
 
 onMounted(() => window.addEventListener('paste', onPaste))
@@ -101,6 +111,7 @@ function onSelectExistingAction(nodeId?: string) {
   if (form.reuseActionImage) {
     form.actionImage = act.image
   }
+  form.actionOutputUnit = act.outputUnit
 }
 
 /** 切换「复用图片」：勾选则带出所选加工节点图片，取消则清空（需用户上传） */
@@ -141,6 +152,7 @@ function submit() {
     action: form.action,
     actionImage: form.actionImage,
     actionDescription: form.actionDescription ?? '',
+    actionOutputUnit: form.actionOutputUnit,
     actionRefId: form.actionRefId,
     reuseActionImage: form.reuseActionImage,
     output: {
@@ -171,6 +183,7 @@ function submit() {
   form.output = { name: '', image: '', quantity: 1, description: '' }
   form.actionImage = ''
   form.actionDescription = ''
+  form.actionOutputUnit = DEFAULT_UNIT
   form.actionRefId = undefined
   form.reuseActionImage = true
   outputUpload.reset()
@@ -292,6 +305,19 @@ function submit() {
         class="desc-input"
         style="margin-top: 6px"
       />
+      <div class="name-quantity" style="margin-top: 6px">
+        <span class="qty-label">输出单位</span>
+        <el-select
+          v-model="form.actionOutputUnit"
+          filterable
+          allow-create
+          default-first-option
+          size="small"
+          style="flex: 1"
+        >
+          <el-option v-for="u in DEFAULT_UNITS" :key="u" :label="u" :value="u" />
+        </el-select>
+      </div>
 
       <div class="section-label" style="margin-top: 14px">输出产物</div>
       <el-input v-model="form.output.name" placeholder="产物名称" clearable @focus="pasteTarget = 'output'" />
