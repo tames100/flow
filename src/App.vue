@@ -19,7 +19,7 @@ import { useRecipeGraph } from './composables/useRecipeGraph'
 import { useRecipeHighlight } from './composables/useRecipeHighlight'
 import type { RecipeGraphData } from './types'
 
-const { onNodeClick, onConnect, addEdges } = useVueFlow()
+const { onNodeClick, onConnect, addEdges, onNodeDragStop } = useVueFlow()
 const { deleteNode, detectCycle, exportJSON, importJSON, persist, loadFromStorage } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
@@ -28,6 +28,9 @@ const { highlightFromNode, clearHighlight } = useRecipeHighlight()
 onMounted(() => {
   loadFromStorage()
 })
+
+// 拖拽节点结束后自动保存位置
+onNodeDragStop(() => persist())
 
 const selectedNodeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)

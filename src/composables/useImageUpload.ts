@@ -75,6 +75,7 @@ export function useImageUpload() {
     onFileChange,
     onDrop,
     onPaste,
+    handleFile,
     reset,
   }
 }
