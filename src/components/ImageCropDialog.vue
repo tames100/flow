@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 import { useImageCrop } from '../composables'
@@ -51,6 +52,12 @@ function onRatioChange(v: number) {
 function doConfirm() {
   const c = cropper.value
   if (!c) return
+  if (typeof (c as any).getCroppedCanvas !== 'function') {
+    // 兜底：运行时加载到了不兼容的版本（如 cropperjs 2.x 缓存），提示重启开发服务器
+    ElMessage.error('裁剪组件加载异常（检测到不兼容版本），请重启开发服务器后重试')
+    cancel()
+    return
+  }
   const canvas = c.getCroppedCanvas({
     maxWidth: 1024,
     maxHeight: 1024,

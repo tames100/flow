@@ -224,8 +224,7 @@ function submit() {
         <el-input
           v-model="inp.description"
           type="textarea"
-          :rows="1"
-          autosize
+          :autosize="{ minRows: 1, maxRows: 4 }"
           placeholder="输入解释（可选，展示在节点上）"
           class="desc-input"
           @focus="pasteTarget = idx"
@@ -299,8 +298,7 @@ function submit() {
       <el-input
         v-model="form.actionDescription"
         type="textarea"
-        :rows="1"
-        autosize
+        :autosize="{ minRows: 1, maxRows: 4 }"
         placeholder="加工解释（可选，展示在节点上）"
         class="desc-input"
         style="margin-top: 6px"
@@ -328,8 +326,7 @@ function submit() {
       <el-input
         v-model="form.output.description"
         type="textarea"
-        :rows="1"
-        autosize
+        :autosize="{ minRows: 1, maxRows: 4 }"
         placeholder="产物解释（可选，展示在节点上）"
         class="desc-input"
         style="margin-top: 6px"
@@ -358,10 +355,6 @@ function submit() {
   padding: 14px;
   height: 100%;
   overflow-y: auto;
-}
-.panel-title {
-  margin: 0 0 12px;
-  font-size: 16px;
 }
 .section-label {
   font-size: 13px;

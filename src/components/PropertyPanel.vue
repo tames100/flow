@@ -43,7 +43,13 @@ const label = computed({
   get: () => (node.value?.data ? (node.value.data as any).label ?? '' : ''),
   set: (v: string) => {
     if (node.value) {
-      updateNode(node.value.id, { data: { ...node.value.data, label: v } })
+      const data: any = { ...node.value.data, label: v }
+      // 方向 A：加工节点的名称始终跟随加工动作，避免两者分叉
+      if (node.value.data?.kind === 'action') {
+        addAction(v)
+        data.action = v
+      }
+      updateNode(node.value.id, { data })
       persist()
     }
   },
@@ -287,7 +293,7 @@ async function onFileChange(e: Event) {
     persist()
     ElMessage.success('图片已替换')
   }
-  ;(e.target as HTMLInputElement).value = ''
+  ; (e.target as HTMLInputElement).value = ''
 }
 
 function readFileAsDataURL(f: File): Promise<string> {
@@ -314,7 +320,7 @@ async function onActionFileChange(e: Event) {
     persist()
     ElMessage.success('动作图标已替换')
   }
-  ;(e.target as HTMLInputElement).value = ''
+  ; (e.target as HTMLInputElement).value = ''
 }
 
 function onDuplicate() {
@@ -342,7 +348,6 @@ watch(edgeId, (v) => emit('update:edge', v))
 
 <template>
   <div class="prop-panel">
-    <h3 class="panel-title">属性面板</h3>
 
     <!-- ===== 连线编辑模式 ===== -->
     <template v-if="selectedEdge">
@@ -353,15 +358,8 @@ watch(edgeId, (v) => emit('update:edge', v))
         <el-form-item label="数量与单位">
           <div class="qty-unit-row">
             <el-input-number v-model="edgeQty" :min="1" :max="9999" controls-position="right" style="flex: 1" />
-            <el-select
-              v-model="edgeUnit"
-              placeholder="单位"
-              clearable
-              filterable
-              allow-create
-              default-first-option
-              style="width: 96px"
-            >
+            <el-select v-model="edgeUnit" placeholder="单位" clearable filterable allow-create default-first-option
+              style="width: 96px">
               <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
             </el-select>
           </div>
@@ -400,12 +398,13 @@ watch(edgeId, (v) => emit('update:edge', v))
           </el-tag>
         </el-form-item>
 
-        <el-form-item label="名称">
+        <el-form-item v-if="isItem" label="名称">
           <el-input v-model="label" placeholder="节点名称" />
         </el-form-item>
 
         <el-form-item label="解释">
-          <el-input v-model="description" type="textarea" :rows="2" placeholder="节点解释（展示在节点上）" />
+          <el-input v-model="description" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }"
+            placeholder="节点解释（展示在节点上）" />
         </el-form-item>
 
         <template v-if="isItem">
@@ -414,13 +413,8 @@ watch(edgeId, (v) => emit('update:edge', v))
           </el-form-item>
           <el-form-item label="图片">
             <div class="img-box">
-              <img
-                v-if="image"
-                :src="image"
-                class="preview zoomable"
-                :title="`点击放大：${label}`"
-                @click.stop="openImage(image, label)"
-              />
+              <img v-if="image" :src="image" class="preview zoomable" :title="`点击放大：${label}`"
+                @click.stop="openImage(image, label)" />
               <div v-else class="preview placeholder">无</div>
               <el-button size="small" type="primary" @click="pickImage">替换图片</el-button>
             </div>
@@ -435,7 +429,8 @@ watch(edgeId, (v) => emit('update:edge', v))
           <div v-if="isBasicSelf" class="trace-result">
             <div class="trace-row">
               <span class="trace-name">{{ label }}</span>
-              <span class="trace-qty">× {{ traceQty }}{{ traceMaterials[0].unit ? ' ' + traceMaterials[0].unit : '' }}</span>
+              <span class="trace-qty">× {{ traceQty }}{{ traceMaterials[0].unit ? ' ' + traceMaterials[0].unit : ''
+              }}</span>
             </div>
             <div class="qty-tip">该产物本身就是基本原料，无上游加工链。</div>
           </div>
@@ -452,26 +447,11 @@ watch(edgeId, (v) => emit('update:edge', v))
           <el-form-item v-if="inEdges.length" label="输入数量">
             <div v-for="e in inEdges" :key="e.id" class="qty-row">
               <span class="qty-name" :title="nodeName(e.source)">{{ nodeName(e.source) }}</span>
-              <el-input-number
-                :model-value="qtyFromLabel(e.label)"
-                :min="1"
-                :max="9999"
-                controls-position="right"
-                size="small"
-                style="width: 96px"
-                @update:model-value="onQtyInput(e, $event)"
-              />
-              <el-select
-                :model-value="unitOf(e) || resolveUnit(e.source, e.target)"
-                placeholder="单位"
-                clearable
-                filterable
-                allow-create
-                default-first-option
-                size="small"
-                style="width: 76px"
-                @update:model-value="onUnitInput(e, $event)"
-              >
+              <el-input-number :model-value="qtyFromLabel(e.label)" :min="1" :max="9999" controls-position="right"
+                size="small" style="width: 96px" @update:model-value="onQtyInput(e, $event)" />
+              <el-select :model-value="unitOf(e) || resolveUnit(e.source, e.target)" placeholder="单位" clearable
+                filterable allow-create default-first-option size="small" style="width: 76px"
+                @update:model-value="onUnitInput(e, $event)">
                 <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
               </el-select>
             </div>
@@ -480,74 +460,37 @@ watch(edgeId, (v) => emit('update:edge', v))
           <el-form-item v-if="outEdges.length" label="输出数量">
             <div v-for="e in outEdges" :key="e.id" class="qty-row">
               <span class="qty-name" :title="nodeName(e.target)">{{ nodeName(e.target) }}</span>
-              <el-input-number
-                :model-value="qtyFromLabel(e.label)"
-                :min="1"
-                :max="9999"
-                controls-position="right"
-                size="small"
-                style="width: 96px"
-                @update:model-value="onQtyInput(e, $event)"
-              />
-              <el-select
-                :model-value="unitOf(e) || resolveUnit(e.source, e.target)"
-                placeholder="单位"
-                clearable
-                filterable
-                allow-create
-                default-first-option
-                size="small"
-                style="width: 76px"
-                @update:model-value="onUnitInput(e, $event)"
-              >
+              <el-input-number :model-value="qtyFromLabel(e.label)" :min="1" :max="9999" controls-position="right"
+                size="small" style="width: 96px" @update:model-value="onQtyInput(e, $event)" />
+              <el-select :model-value="unitOf(e) || resolveUnit(e.source, e.target)" placeholder="单位" clearable
+                filterable allow-create default-first-option size="small" style="width: 76px"
+                @update:model-value="onUnitInput(e, $event)">
                 <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
               </el-select>
             </div>
             <div class="qty-tip">本加工节点指出的连线均为输出，单位与「输出单位」一致</div>
           </el-form-item>
           <el-form-item label="加工动作">
-            <el-select
-              v-model="action"
-              style="width: 100%"
-              filterable
-              allow-create
-              default-first-option
-              placeholder="选择或输入自定义动作"
-            >
+            <el-select v-model="action" style="width: 100%" filterable allow-create default-first-option
+              placeholder="选择或输入自定义动作">
               <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
             </el-select>
           </el-form-item>
           <el-form-item label="输出单位（下游输入自动继承）">
-            <el-select
-              v-model="outputUnit"
-              style="width: 100%"
-              filterable
-              allow-create
-              default-first-option
-              placeholder="选择或输入单位"
-            >
+            <el-select v-model="outputUnit" style="width: 100%" filterable allow-create default-first-option
+              placeholder="选择或输入单位">
               <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
             </el-select>
           </el-form-item>
           <el-form-item label="动作图标">
             <div class="img-box">
-              <img
-                v-if="image"
-                :src="image"
-                class="preview zoomable"
-                :title="`点击放大：${label}`"
-                @click.stop="openImage(image, label)"
-              />
+              <img v-if="image" :src="image" class="preview zoomable" :title="`点击放大：${label}`"
+                @click.stop="openImage(image, label)" />
               <div v-else class="preview placeholder">默认</div>
               <el-button size="small" type="primary" @click="pickActionImage">替换图标</el-button>
             </div>
-            <input
-              ref="actionFileInput"
-              type="file"
-              accept="image/*"
-              style="display: none"
-              @change="onActionFileChange"
-            />
+            <input ref="actionFileInput" type="file" accept="image/*" style="display: none"
+              @change="onActionFileChange" />
           </el-form-item>
         </template>
 
@@ -570,27 +513,28 @@ watch(edgeId, (v) => emit('update:edge', v))
   height: 100%;
   overflow-y: auto;
 }
-.panel-title {
-  margin: 0 0 12px;
-  font-size: 16px;
-}
+
 .qty-tip {
   font-size: 12px;
   color: #909399;
   margin-top: 4px;
+  line-height: 1.2;
 }
+
 .qty-unit-row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
 }
+
 .trace-tip {
   font-size: 12px;
   color: #909399;
   margin: -4px 0 8px;
   line-height: 1.6;
 }
+
 .trace-result {
   display: flex;
   flex-direction: column;
@@ -600,6 +544,7 @@ watch(edgeId, (v) => emit('update:edge', v))
   border-radius: 8px;
   background: #fafafa;
 }
+
 .trace-row {
   display: flex;
   align-items: center;
@@ -607,6 +552,7 @@ watch(edgeId, (v) => emit('update:edge', v))
   gap: 10px;
   font-size: 13px;
 }
+
 .trace-name {
   flex: 1;
   min-width: 0;
@@ -615,15 +561,18 @@ watch(edgeId, (v) => emit('update:edge', v))
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .trace-qty {
   color: #e6a23c;
   font-weight: 700;
   white-space: nowrap;
 }
+
 .trace-empty {
   font-size: 12px;
   color: #909399;
 }
+
 .qty-row {
   display: flex;
   align-items: center;
@@ -632,6 +581,7 @@ watch(edgeId, (v) => emit('update:edge', v))
   width: 100%;
   padding: 3px 0;
 }
+
 .qty-name {
   flex: 1;
   min-width: 0;
@@ -641,16 +591,19 @@ watch(edgeId, (v) => emit('update:edge', v))
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .edge-dir {
   font-size: 13px;
   color: #606266;
   word-break: break-all;
 }
+
 .img-box {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+
 .preview {
   width: 56px;
   height: 56px;
@@ -658,13 +611,16 @@ watch(edgeId, (v) => emit('update:edge', v))
   border-radius: 8px;
   border: 1px solid #dcdfe6;
 }
+
 .preview.zoomable {
   cursor: zoom-in;
   transition: transform 0.15s ease;
 }
+
 .preview.zoomable:hover {
   transform: scale(1.08);
 }
+
 .preview.placeholder {
   display: flex;
   align-items: center;

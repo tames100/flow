@@ -400,6 +400,7 @@ const shortcutsList = [
       v-model="formDialogVisible"
       title="配方录入"
       width="460px"
+      class="recipe-dialog"
       :close-on-click-modal="false"
       append-to-body
     >
@@ -520,4 +521,10 @@ const shortcutsList = [
   padding: 1px 6px;
   font-size: 12px;
   white-space: nowrap;
-}</style>
+}
+/* 配方录入弹窗：限制弹窗高度，保证视口内完整显示全部内容（文本域内部自行滚动） */
+.recipe-dialog :deep(.el-dialog__body) {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+</style>
