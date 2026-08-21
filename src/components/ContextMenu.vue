@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, watch } from 'vue'
 import { useContextMenu } from '../composables/useContextMenu'
 
 const { visible, x, y, target, close } = useContextMenu()
@@ -11,12 +10,6 @@ const emit = defineEmits<{
   duplicate: [nodeId: string]
   remove: [nodeId: string]
 }>()
-
-function onDocDown(e: MouseEvent) {
-  // 点击菜单外区域关闭（点击菜单项本身会先执行再关闭）
-  const el = e.target as HTMLElement
-  if (!el.closest('.ctx-menu')) close()
-}
 
 function createItem() {
   emit('createItem', { x: x.value, y: y.value })
@@ -38,53 +31,38 @@ function remove() {
   if (target.value.type === 'node') emit('remove', target.value.nodeId)
   close()
 }
-
-// 打开时屏蔽背景右键默认菜单 + 监听全局点击关闭
-watch(visible, (v) => {
-  if (v) {
-    document.addEventListener('mousedown', onDocDown)
-    document.addEventListener('contextmenu', onDocContext)
-  } else {
-    document.removeEventListener('mousedown', onDocDown)
-    document.removeEventListener('contextmenu', onDocContext)
-  }
-})
-
-function onDocContext(e: MouseEvent) {
-  // 菜单打开期间，任何右键都先关闭（并阻止浏览器原生菜单）
-  e.preventDefault()
-  close()
-}
-
-onMounted(() => {})
-onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', onDocDown)
-  document.removeEventListener('contextmenu', onDocContext)
-})
 </script>
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="visible"
-      class="ctx-menu"
-      :style="{ left: x + 'px', top: y + 'px' }"
-    >
-      <template v-if="target.type === 'canvas'">
-        <div class="ctx-item" @click="createItem">➕ 创建物品节点</div>
-        <div class="ctx-item" @click="createAction">⚙️ 创建加工动作节点</div>
-      </template>
+    <div v-if="visible" class="ctx-overlay" @click="close" @contextmenu.prevent="close">
+      <div
+        class="ctx-menu"
+        :style="{ left: x + 'px', top: y + 'px' }"
+        @click.stop
+        @contextmenu.stop
+      >
+        <template v-if="target.type === 'canvas'">
+          <div class="ctx-item" @click="createItem">➕ 创建物品节点</div>
+          <div class="ctx-item" @click="createAction">⚙️ 创建加工动作节点</div>
+        </template>
 
-      <template v-else>
-        <div class="ctx-item" @click="edit">✏️ 属性修改</div>
-        <div class="ctx-item" @click="duplicate">📑 复制节点</div>
-        <div class="ctx-item danger" @click="remove">🗑️ 删除节点</div>
-      </template>
+        <template v-else>
+          <div class="ctx-item" @click="edit">✏️ 属性修改</div>
+          <div class="ctx-item" @click="duplicate">📑 复制节点</div>
+          <div class="ctx-item danger" @click="remove">🗑️ 删除节点</div>
+        </template>
+      </div>
     </div>
   </Teleport>
 </template>
 
 <style scoped>
+.ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
 .ctx-menu {
   position: fixed;
   min-width: 160px;
