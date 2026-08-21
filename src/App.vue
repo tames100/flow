@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -44,10 +44,21 @@ useCanvasShortcuts({
   onSave: onSaveState,
 })
 
-// 启动时从 localStorage 恢复完整画布状态（节点位置 / 连线 / 视图）
-onMounted(() => {
-  loadFromStorage()
-  // 10s 一次的自动保存：写入 localStorage（完整画布状态），并弹窗提示
+const AUTO_SAVE_KEY = 'vflow_auto_save_interval'
+let autoSaveTimer: number | undefined
+
+// 自动保存间隔（秒），可在顶部工具栏调整，设置持久化到 localStorage
+const autoSaveInterval = ref(10)
+;(() => {
+  const saved = Number(localStorage.getItem(AUTO_SAVE_KEY))
+  if (Number.isFinite(saved) && saved >= 1 && saved <= 3600) {
+    autoSaveInterval.value = saved
+  }
+})()
+
+/** 按当前设置的间隔（秒）启动自动保存定时器 */
+function startAutoSaveTimer() {
+  if (autoSaveTimer) window.clearInterval(autoSaveTimer)
   autoSaveTimer = window.setInterval(() => {
     persist()
     ElMessage({
@@ -56,14 +67,24 @@ onMounted(() => {
       grouping: true,
       duration: 1500,
     })
-  }, 10000)
+  }, autoSaveInterval.value * 1000)
+}
+
+// 间隔变化时：持久化设置并重启定时器
+watch(autoSaveInterval, (v) => {
+  localStorage.setItem(AUTO_SAVE_KEY, String(v))
+  startAutoSaveTimer()
+})
+
+// 启动时从 localStorage 恢复完整画布状态（节点位置 / 连线 / 视图）
+onMounted(() => {
+  loadFromStorage()
+  startAutoSaveTimer()
 })
 
 onBeforeUnmount(() => {
   if (autoSaveTimer) window.clearInterval(autoSaveTimer)
 })
-
-let autoSaveTimer: number | undefined
 
 // 拖拽节点结束后自动保存位置
 onNodeDragStop(() => persist())
@@ -253,6 +274,19 @@ const shortcutsList = [
         <el-button size="small" @click="onExportFile">导出 JSON</el-button>
         <el-button size="small" @click="onImportClick">导入 JSON</el-button>
         <el-button size="small" type="danger" plain @click="onReset">清空</el-button>
+        <div class="auto-save-set" title="设置自动保存间隔">
+          <span class="auto-save-label">自动保存</span>
+          <el-input-number
+            v-model="autoSaveInterval"
+            :min="1"
+            :max="3600"
+            :step="5"
+            size="small"
+            controls-position="right"
+            style="width: 100px"
+          />
+          <span class="auto-save-unit">s</span>
+        </div>
         <el-button size="small" @click="shortcutsVisible = true">⌨ 快捷键说明</el-button>
         <input ref="importInput" type="file" accept="application/json" style="display:none" @change="onImportChange" />
       </div>
@@ -346,7 +380,25 @@ const shortcutsList = [
 }
 .tool-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+.auto-save-set {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+}
+.auto-save-label {
+  font-size: 12px;
+  color: #dcdfe6;
+  white-space: nowrap;
+}
+.auto-save-unit {
+  font-size: 12px;
+  color: #dcdfe6;
 }
 .center {
   flex: 1;
