@@ -1,0 +1,47 @@
+:root {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1f2933;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* Vue Flow 高亮 / 置灰 通用类 */
+.vue-flow__node.dimmed {
+  opacity: 0.25;
+  filter: grayscale(0.9);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.vue-flow__node.highlighted {
+  opacity: 1;
+  filter: none;
+  box-shadow: 0 0 0 2px #409eff, 0 4px 12px rgba(64, 158, 255, 0.5);
+  border-radius: 10px;
+  transition: opacity 0.2s ease, filter 0.2s ease;
+  z-index: 10;
+}
+
+.recipe-edge {
+  transition: opacity 0.2s ease;
+}
+
+.recipe-edge.dimmed {
+  opacity: 0.15;
+}
+
+.recipe-edge.highlighted {
+  opacity: 1;
+  stroke: #409eff !important;
+  stroke-width: 2.5 !important;
+}
