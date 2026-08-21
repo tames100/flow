@@ -7,7 +7,7 @@ import { useActionTypes } from '../composables/useActionTypes'
 
 const { findNode, updateNode } = useVueFlow()
 const { deleteNode, duplicateNode, persist } = useRecipeGraph()
-const { allActions } = useActionTypes()
+const { allActions, addAction } = useActionTypes()
 
 const selectedId = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -42,6 +42,8 @@ const action = computed({
   get: () => (node.value?.data as any)?.action ?? '合成',
   set: (v: string) => {
     if (node.value) {
+      // 新增的自定义加工动作持久化到下拉列表
+      addAction(v)
       updateNode(node.value.id, { data: { ...node.value.data, action: v, label: v } })
       persist()
     }

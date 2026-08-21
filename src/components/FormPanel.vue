@@ -7,7 +7,7 @@ import { useActionTypes } from '../composables/useActionTypes'
 import { useImageUpload } from '../composables/useImageUpload'
 
 const { addRecipeFromForm, detectCycle, getItemNodes } = useRecipeGraph()
-const { allActions } = useActionTypes()
+const { allActions, addAction } = useActionTypes()
 
 const emit = defineEmits<{ submitted: [] }>()
 
@@ -98,6 +98,9 @@ function submit() {
     ElMessage.warning('请填写输出产物名称')
     return
   }
+
+  // 新增的自定义加工动作持久化到下拉列表
+  addAction(form.action)
 
   addRecipeFromForm({
     inputs: validInputs.map((i) => ({
