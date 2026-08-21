@@ -70,6 +70,7 @@ function startAutoSaveTimer() {
       type: 'success',
       grouping: true,
       duration: 1500,
+      customClass: 'save-toast',
     })
   }, autoSaveInterval.value * 1000)
 }
@@ -234,7 +235,7 @@ function onSaveState() {
     ElMessage.warning(`注意：图中存在循环依赖（${cycle.length} 个节点），仍已保存`)
   }
   persist()
-  ElMessage.success('画布状态已保存（节点位置 / 连线 / 视图）')
+  ElMessage.success({ message: '画布状态已保存（节点位置 / 连线 / 视图）', customClass: 'save-toast' })
 }
 
 // 导出：将完整画布状态生成为本地 .json 文件（便于备份 / 分享）

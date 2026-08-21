@@ -50,6 +50,12 @@ body,
   transition: opacity 0.2s ease;
 }
 
+/* 保存成功提示：显示在视图左上角（覆盖 Element Plus 默认的顶部居中） */
+.el-message.save-toast {
+  left: 16px !important;
+  transform: none !important;
+}
+
 /* 连线上数量标签 */
 .vue-flow__edge-text {
   font-size: 12px;
