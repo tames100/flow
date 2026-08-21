@@ -541,6 +541,11 @@ watch(edgeId, (v) => emit('update:edge', v))
   overflow-y: auto;
 }
 
+/* 表单 label 加粗，与输入内容区分 */
+.prop-panel :deep(.el-form-item__label) {
+  font-weight: 600;
+}
+
 .qty-tip {
   font-size: 12px;
   color: #909399;
