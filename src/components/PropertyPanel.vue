@@ -9,7 +9,12 @@ const { findNode, updateNode } = useVueFlow()
 const { deleteNode, duplicateNode, persist } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 
-const selectedId = ref<string | null>(null)
+// 由 App 通过 v-model 同步选中节点
+const props = defineProps<{ modelValue: string | null }>()
+const emit = defineEmits<{ 'update:modelValue': [string | null] }>()
+
+// 初始即同步当前选中值（解决首帧空白问题）
+const selectedId = ref<string | null>(props.modelValue)
 const fileInput = ref<HTMLInputElement | null>(null)
 const actionFileInput = ref<HTMLInputElement | null>(null)
 
@@ -103,10 +108,7 @@ function onDelete() {
   }
 }
 
-// 由 App 通过 v-model 同步选中节点
-const props = defineProps<{ modelValue: string | null }>()
-const emit = defineEmits<{ 'update:modelValue': [string | null] }>()
-
+// 由 App 通过 v-model 同步选中节点（props/emit/selectedId 已在顶部声明）
 watch(
   () => props.modelValue,
   (v) => (selectedId.value = v),
