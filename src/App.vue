@@ -17,12 +17,29 @@ import ActionNode from './components/nodes/ActionNode.vue'
 
 import { useRecipeGraph } from './composables/useRecipeGraph'
 import { useRecipeHighlight } from './composables/useRecipeHighlight'
+import { useCanvasShortcuts } from './composables/useCanvasShortcuts'
 import type { RecipeGraphData } from './types'
 
-const { onNodeClick, onConnect, addEdges, onNodeDragStop } = useVueFlow()
-const { deleteNode, detectCycle, exportJSON, importJSON, persist, loadFromStorage } =
+const { onNodeClick, onConnect, addEdges, onNodeDragStop, getNodes, getEdges, updateNode, updateEdge } =
+  useVueFlow()
+const { detectCycle, exportJSON, importJSON, persist, loadFromStorage } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
+
+// 右键点击画布空白：选中全部节点
+function selectAll() {
+  getNodes.value.forEach((n) => updateNode(n.id, { selected: true } as any))
+  getEdges.value.forEach((e) => updateEdge(e as any, { selected: true } as any))
+}
+
+// 画布快捷键
+useCanvasShortcuts({
+  onSelectAll: selectAll,
+  onEscape: () => {
+    clearHighlight()
+    selectedNodeId.value = null
+  },
+})
 
 // 启动时从 localStorage 恢复自动保存的数据
 onMounted(() => {
@@ -72,18 +89,6 @@ onConnect((connection) => {
     )
   }
 })
-
-// 删除键删除选中节点
-function onKeydown(e: KeyboardEvent) {
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId.value) {
-    // 避免在输入框中误删
-    const tag = (e.target as HTMLElement)?.tagName
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return
-    deleteNode(selectedNodeId.value)
-    selectedNodeId.value = null
-  }
-}
-window.addEventListener('keydown', onKeydown)
 
 // ---- 顶部工具栏：添加 / 保存 / 导出 / 导入 / 重置 ----
 function onAddRecipe() {

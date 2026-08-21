@@ -38,16 +38,6 @@ const showLabel = computed({
   },
 })
 
-const quantity = computed({
-  get: () => (node.value?.data as any)?.quantity ?? 1,
-  set: (v: number) => {
-    if (node.value) {
-      updateNode(node.value.id, { data: { ...node.value.data, quantity: v || 1 } })
-      persist()
-    }
-  },
-})
-
 const action = computed({
   get: () => (node.value?.data as any)?.action ?? '合成',
   set: (v: string) => {
@@ -141,9 +131,6 @@ watch(selectedId, (v) => emit('update:modelValue', v))
         </el-form-item>
 
         <template v-if="isItem">
-          <el-form-item label="数量">
-            <el-input-number v-model="quantity" :min="1" :max="9999" controls-position="right" />
-          </el-form-item>
           <el-form-item label="显示文字">
             <el-switch v-model="showLabel" active-text="图片+文字" inactive-text="仅图片" />
           </el-form-item>

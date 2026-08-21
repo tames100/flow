@@ -87,41 +87,57 @@ export function useRecipeGraph() {
 
   /**
    * 根据表单生成「输入物品 -> 动作节点 -> 输出物品」的节点与连线。
-   * 自动横向布局：输入在左，动作在中，输出在右。
+   * - 若输入项选择了「已有产物」(refId)，则直接复用该节点作为来源（不新建重复物品）。
+   * - 数量展示在「输入 -> 动作」的连线上（数量为 1 时不显示）。
    */
   function addRecipeFromForm(form: RecipeForm) {
     const baseX = 80 + (nodes.value.length % 3) * 320
     const baseY = 80 + Math.floor(nodes.value.length / 3) * 320
 
-    const inputNodes = form.inputs.map((inp, i) =>
-      createItemNode(inp.name, inp.image ?? '', {
-        x: baseX,
-        y: baseY + i * 90,
-      }, true, inp.quantity ?? 1),
-    )
+    const createdNodes: RecipeNode[] = []
+
+    // 解析每个输入：复用已有节点 or 新建
+    const inputSources = form.inputs.map((inp, i) => {
+      if (inp.refId) {
+        const existing = findNode(inp.refId)
+        if (existing) {
+          return { node: existing, quantity: inp.quantity ?? 1 }
+        }
+      }
+      const n = createItemNode(
+        inp.name,
+        inp.image ?? '',
+        { x: baseX, y: baseY + i * 90 },
+        true,
+        1,
+      )
+      createdNodes.push(n)
+      return { node: n, quantity: inp.quantity ?? 1 }
+    })
 
     const actionNode = createActionNode(
       form.action,
       {
         x: baseX + 220,
-        y: baseY + ((inputNodes.length - 1) * 90) / 2,
+        y: baseY + ((inputSources.length - 1) * 90) / 2,
       },
       form.actionImage ?? '',
     )
+    createdNodes.push(actionNode)
 
     const outputNode = createItemNode(form.output.name, form.output.image ?? '', {
       x: baseX + 460,
-      y: baseY + ((inputNodes.length - 1) * 90) / 2,
+      y: baseY + ((inputSources.length - 1) * 90) / 2,
     })
-
-    const newNodes = [...inputNodes, actionNode, outputNode]
+    createdNodes.push(outputNode)
 
     const newEdges: RecipeEdge[] = [
-      ...inputNodes.map((n) => ({
+      ...inputSources.map((s) => ({
         id: genId('e'),
-        source: n.id,
+        source: s.node.id,
         target: actionNode.id,
         class: 'recipe-edge',
+        label: s.quantity > 1 ? `×${s.quantity}` : '',
       })),
       {
         id: genId('e'),
@@ -131,15 +147,15 @@ export function useRecipeGraph() {
       },
     ]
 
-    addNodes(newNodes as any)
+    addNodes(createdNodes as any)
     addEdges(newEdges as any)
 
     // 同步本地 ref
-    nodes.value = [...nodes.value, ...(newNodes as any[])] as RecipeNode[]
+    nodes.value = [...nodes.value, ...(createdNodes as any[])] as RecipeNode[]
     edges.value = [...edges.value, ...(newEdges as any[])] as RecipeEdge[]
 
     persist()
-    return { inputNodes, actionNode, outputNode }
+    return { inputNodes: inputSources.map((s) => s.node), actionNode, outputNode }
   }
 
   /** 删除节点（连同其相关连线） */
