@@ -17,7 +17,7 @@ const form = reactive<RecipeForm>({
   actionOutputUnit: DEFAULT_UNIT,
   actionRefId: undefined,
   reuseActionImage: true,
-  output: { name: '', image: '', quantity: 1, description: '' },
+  outputs: [{ name: '', image: '', quantity: 1, description: '' }],
 })
 
 const inputUpload = useImageUpload()
@@ -25,24 +25,30 @@ const outputUpload = useImageUpload()
 const actionUpload = useImageUpload()
 
 /**
- * 上传目标：'action' | 'output' | 输入行的索引（数字）。
+ * 上传目标：'action' | `in${idx}`（输入行索引） | `out${idx}`（输出行索引）。
  * 用于剪贴板粘贴时，把图片写入当前「激活」的图片槽。
  */
-const pasteTarget = ref<string | number>('output')
+const pasteTarget = ref<string>('out0')
 
-function setImage(target: string | number, dataUrl: string) {
-  if (target === 'output') form.output.image = dataUrl
-  else if (target === 'action') form.actionImage = dataUrl
-  else form.inputs[target as number].image = dataUrl
+function resolveUpload(target: string) {
+  if (target === 'action') return actionUpload
+  return target.startsWith('out') ? outputUpload : inputUpload
+}
+
+function setImage(target: string, dataUrl: string) {
+  if (target === 'action') form.actionImage = dataUrl
+  else if (target.startsWith('out')) form.outputs[Number(target.slice(3))].image = dataUrl
+  else form.inputs[Number(target.slice(2))].image = dataUrl
 }
 
 /** 上传图片统一入口：先打开裁剪弹窗，用户确认后才写入目标图片槽（取消则忽略） */
-async function cropAndSet(target: string | number, dataUrl: string) {
+async function cropAndSet(target: string, dataUrl: string) {
   const cropped = await openCrop(dataUrl)
   if (cropped) setImage(target, cropped)
 }
 
-function pickImage(upload: ReturnType<typeof useImageUpload>, target: string | number) {
+function pickImage(target: string) {
+  const upload = resolveUpload(target)
   const inp = upload.fileInput.value
   if (!inp) return
   inp.onchange = (e) => {
@@ -54,10 +60,10 @@ function pickImage(upload: ReturnType<typeof useImageUpload>, target: string | n
 }
 
 // 拖拽放置
-async function onDrop(target: string | number, e: DragEvent) {
+async function onDrop(target: string, e: DragEvent) {
   e.preventDefault()
   pasteTarget.value = target
-  const upload = target === 'output' ? outputUpload : target === 'action' ? actionUpload : inputUpload
+  const upload = resolveUpload(target)
   await upload.handleFile(e.dataTransfer?.files?.[0])
   await cropAndSet(target, upload.image.value)
 }
@@ -65,9 +71,7 @@ async function onDrop(target: string | number, e: DragEvent) {
 // 全局粘贴：写入当前激活的图片槽（裁剪弹窗打开期间忽略，避免干扰裁剪操作）
 async function onPaste(e: ClipboardEvent) {
   if (cropState.visible) return
-  const upload = pasteTarget.value === 'output' ? outputUpload
-    : pasteTarget.value === 'action' ? actionUpload
-    : inputUpload
+  const upload = resolveUpload(pasteTarget.value)
   await upload.onPaste(e)
   if (!upload.image.value) return
   await cropAndSet(pasteTarget.value, upload.image.value)
@@ -86,6 +90,18 @@ function removeInputRow(idx: number) {
     return
   }
   form.inputs.splice(idx, 1)
+}
+
+function addOutputRow() {
+  form.outputs.push({ name: '', image: '', quantity: 1, description: '' })
+}
+
+function removeOutputRow(idx: number) {
+  if (form.outputs.length === 1) {
+    ElMessage.warning('至少保留一个输出产物')
+    return
+  }
+  form.outputs.splice(idx, 1)
 }
 
 /** 选择已有产物：带入名称与图片 */
@@ -133,8 +149,9 @@ function submit() {
     ElMessage.warning('请至少填写一个输入物品名称')
     return
   }
-  if (!form.output.name.trim()) {
-    ElMessage.warning('请填写输出产物名称')
+  const validOutputs = form.outputs.filter((o) => o.name.trim())
+  if (validOutputs.length === 0) {
+    ElMessage.warning('请至少填写一个输出产物名称')
     return
   }
 
@@ -154,12 +171,12 @@ function submit() {
     actionOutputUnit: form.actionOutputUnit,
     actionRefId: form.actionRefId,
     reuseActionImage: form.reuseActionImage,
-    output: {
-      name: form.output.name.trim(),
-      image: form.output.image,
-      quantity: form.output.quantity,
-      description: form.output.description ?? '',
-    },
+    outputs: validOutputs.map((o) => ({
+      name: o.name.trim(),
+      image: o.image,
+      quantity: o.quantity,
+      description: o.description ?? '',
+    })),
   })
 
   // 新增后立即检测循环依赖
@@ -177,14 +194,15 @@ function submit() {
   // 关闭弹窗
   emit('submitted')
 
-  // 重置输入行（保留一行）
+  // 重置表单（各保留一行）
   form.inputs = [{ name: '', image: '', quantity: 1, description: '' }]
-  form.output = { name: '', image: '', quantity: 1, description: '' }
+  form.outputs = [{ name: '', image: '', quantity: 1, description: '' }]
   form.actionImage = ''
   form.actionDescription = ''
   form.actionOutputUnit = DEFAULT_UNIT
   form.actionRefId = undefined
   form.reuseActionImage = true
+  pasteTarget.value = 'out0'
   outputUpload.reset()
   actionUpload.reset()
 }
@@ -198,151 +216,171 @@ function submit() {
     <input ref="actionUpload.fileInput" type="file" accept="image/*" style="display: none" />
 
     <el-form label-position="top" size="default">
-      <div class="section-label">输入物品</div>
-      <div v-for="(inp, idx) in form.inputs" :key="idx" class="input-row">
-        <el-select
-          :model-value="inp.refId"
-          placeholder="选择已有产物（可选）"
-          clearable
-          filterable
-          style="width: 100%"
-          @focus="pasteTarget = idx"
-          @change="(v: string) => onSelectExisting(idx, v)"
-        >
-          <el-option v-for="n in getItemNodes()" :key="n.id" :label="n.name" :value="n.id">
-            <span style="display: flex; align-items: center; gap: 6px">
-              <img v-if="n.image" :src="n.image" class="opt-thumb" />
-              <span>{{ n.name || '未命名' }}</span>
-            </span>
-          </el-option>
-        </el-select>
-        <div class="name-quantity">
-          <el-input v-model="inp.name" placeholder="或手动输入物品名称" clearable @focus="pasteTarget = idx" />
-          <el-input-number v-model="inp.quantity" :min="1" :max="9999" size="small" controls-position="right" class="qty-input" />
+      <div class="form-columns">
+        <!-- 左列：输入 -->
+        <div class="form-col">
+          <div class="section-label">输入</div>
+          <div v-for="(inp, idx) in form.inputs" :key="idx" class="input-row">
+            <el-select
+              :model-value="inp.refId"
+              placeholder="选择已有产物（可选）"
+              clearable
+              filterable
+              style="width: 100%"
+              @focus="pasteTarget = `in${idx}`"
+              @change="(v: string) => onSelectExisting(idx, v)"
+            >
+              <el-option v-for="n in getItemNodes()" :key="n.id" :label="n.name" :value="n.id">
+                <span style="display: flex; align-items: center; gap: 6px">
+                  <img v-if="n.image" :src="n.image" class="opt-thumb" />
+                  <span>{{ n.name || '未命名' }}</span>
+                </span>
+              </el-option>
+            </el-select>
+            <div class="name-quantity">
+              <el-input v-model="inp.name" placeholder="或手动输入物品名称" clearable @focus="pasteTarget = `in${idx}`" />
+              <el-input-number v-model="inp.quantity" :min="1" :max="9999" size="small" controls-position="right"
+                class="qty-input" />
+            </div>
+            <el-input
+              v-model="inp.description"
+              type="textarea"
+              :autosize="{ minRows: 1, maxRows: 4 }"
+              placeholder="输入解释（可选，展示在节点上）"
+              class="desc-input"
+              @focus="pasteTarget = `in${idx}`"
+            />
+            <div class="row-actions">
+              <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
+              <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
+            </div>
+            <!-- 整行宽拖拽上传区 -->
+            <div
+              class="drop-zone full"
+              :class="{ active: pasteTarget === `in${idx}` }"
+              @click="pickImage(`in${idx}`)"
+              @mouseenter="pasteTarget = `in${idx}`"
+              @drop="onDrop(`in${idx}`, $event)"
+              @dragover.prevent
+            >
+              <img v-if="inp.image" :src="inp.image" class="thumb" />
+              <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
+            </div>
+          </div>
+          <el-button text type="primary" @click="addInputRow">+ 添加输入</el-button>
         </div>
-        <el-input
-          v-model="inp.description"
-          type="textarea"
-          :autosize="{ minRows: 1, maxRows: 4 }"
-          placeholder="输入解释（可选，展示在节点上）"
-          class="desc-input"
-          @focus="pasteTarget = idx"
-        />
-        <div class="row-actions">
-          <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
-          <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
+
+        <!-- 中列：加工 -->
+        <div class="form-col">
+          <div class="section-label">加工</div>
+          <el-select
+            :model-value="form.actionRefId"
+            placeholder="选择已有加工节点（可选）"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="onSelectExistingAction"
+          >
+            <el-option v-for="n in getActionNodes()" :key="n.id" :label="n.name" :value="n.id">
+              <span style="display: flex; align-items: center; gap: 6px">
+                <img v-if="n.image" :src="n.image" class="opt-thumb" />
+                <span>{{ n.name || '未命名' }}</span>
+              </span>
+            </el-option>
+          </el-select>
+          <el-select
+            v-model="form.action"
+            style="width: 100%; margin-top: 6px"
+            filterable
+            allow-create
+            default-first-option
+            placeholder="选择或输入自定义动作"
+            @change="onActionNameChange"
+          >
+            <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
+          </el-select>
+          <el-checkbox
+            v-if="form.actionRefId"
+            v-model="form.reuseActionImage"
+            style="margin-top: 6px"
+            @change="onToggleReuse"
+          >
+            复用该加工节点的图片
+          </el-checkbox>
+          <!-- 加工动作图标图片上传（点击/拖拽/粘贴） -->
+          <div
+            class="drop-zone full"
+            :class="{ active: pasteTarget === 'action' }"
+            @click="pickImage('action')"
+            @mouseenter="pasteTarget = 'action'"
+            @drop="onDrop('action', $event)"
+            @dragover.prevent
+          >
+            <img v-if="form.actionImage" :src="form.actionImage" class="thumb" />
+            <span v-else class="drop-hint">点击 / 拖拽 / 粘贴动作图标</span>
+          </div>
+          <el-input
+            v-model="form.actionDescription"
+            type="textarea"
+            :autosize="{ minRows: 1, maxRows: 4 }"
+            placeholder="加工解释（可选，展示在节点上）"
+            class="desc-input"
+            style="margin-top: 6px"
+          />
+          <div class="name-quantity" style="margin-top: 6px">
+            <span class="qty-label">输出单位</span>
+            <el-select
+              v-model="form.actionOutputUnit"
+              filterable
+              allow-create
+              default-first-option
+              size="small"
+              style="flex: 1"
+            >
+              <el-option v-for="u in DEFAULT_UNITS" :key="u" :label="u" :value="u" />
+            </el-select>
+          </div>
         </div>
-        <!-- 与输出产物一致的整行宽拖拽上传区 -->
-        <div
-          class="drop-zone full"
-          :class="{ active: pasteTarget === idx }"
-          @click="pickImage(inputUpload, idx)"
-          @mouseenter="pasteTarget = idx"
-          @drop="onDrop(idx, $event)"
-          @dragover.prevent
-        >
-          <img v-if="inp.image" :src="inp.image" class="thumb" />
-          <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
+
+        <!-- 右列：输出（至少一个，可多个） -->
+        <div class="form-col">
+          <div class="section-label">输出</div>
+          <div v-for="(out, idx) in form.outputs" :key="idx" class="input-row">
+            <el-input v-model="out.name" placeholder="产物名称" clearable @focus="pasteTarget = `out${idx}`" />
+            <div class="name-quantity" style="margin-top: 6px">
+              <span class="qty-label">产出数量</span>
+              <el-input-number v-model="out.quantity" :min="1" :max="9999" size="small" controls-position="right"
+                class="qty-input" />
+            </div>
+            <el-input
+              v-model="out.description"
+              type="textarea"
+              :autosize="{ minRows: 1, maxRows: 4 }"
+              placeholder="产物解释（可选，展示在节点上）"
+              class="desc-input"
+              style="margin-top: 6px"
+            />
+            <div class="row-actions">
+              <el-button v-if="out.image" link type="primary" size="small" @click="out.image = ''">清除图</el-button>
+              <el-button link type="danger" size="small" @click="removeOutputRow(idx)">删除</el-button>
+            </div>
+            <div
+              class="drop-zone full"
+              :class="{ active: pasteTarget === `out${idx}` }"
+              @click="pickImage(`out${idx}`)"
+              @mouseenter="pasteTarget = `out${idx}`"
+              @drop="onDrop(`out${idx}`, $event)"
+              @dragover.prevent
+            >
+              <img v-if="out.image" :src="out.image" class="thumb" />
+              <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
+            </div>
+          </div>
+          <el-button text type="primary" @click="addOutputRow">+ 添加输出</el-button>
         </div>
       </div>
-      <el-button text type="primary" @click="addInputRow">+ 添加输入物品</el-button>
 
-      <div class="section-label" style="margin-top: 14px">加工动作</div>
-      <el-select
-        :model-value="form.actionRefId"
-        placeholder="选择已有加工节点（可选）"
-        clearable
-        filterable
-        style="width: 100%"
-        @change="onSelectExistingAction"
-      >
-        <el-option v-for="n in getActionNodes()" :key="n.id" :label="n.name" :value="n.id">
-          <span style="display: flex; align-items: center; gap: 6px">
-            <img v-if="n.image" :src="n.image" class="opt-thumb" />
-            <span>{{ n.name || '未命名' }}</span>
-          </span>
-        </el-option>
-      </el-select>
-      <el-select
-        v-model="form.action"
-        style="width: 100%; margin-top: 6px"
-        filterable
-        allow-create
-        default-first-option
-        placeholder="选择或输入自定义动作"
-        @change="onActionNameChange"
-      >
-        <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
-      </el-select>
-      <el-checkbox
-        v-if="form.actionRefId"
-        v-model="form.reuseActionImage"
-        style="margin-top: 6px"
-        @change="onToggleReuse"
-      >
-        复用该加工节点的图片
-      </el-checkbox>
-      <!-- 加工动作图标图片上传（点击/拖拽/粘贴） -->
-      <div
-        class="drop-zone full"
-        :class="{ active: pasteTarget === 'action' }"
-        @click="pickImage(actionUpload, 'action')"
-        @mouseenter="pasteTarget = 'action'"
-        @drop="onDrop('action', $event)"
-        @dragover.prevent
-      >
-        <img v-if="form.actionImage" :src="form.actionImage" class="thumb" />
-        <span v-else class="drop-hint">点击 / 拖拽 / 粘贴动作图标</span>
-      </div>
-      <el-input
-        v-model="form.actionDescription"
-        type="textarea"
-        :autosize="{ minRows: 1, maxRows: 4 }"
-        placeholder="加工解释（可选，展示在节点上）"
-        class="desc-input"
-        style="margin-top: 6px"
-      />
-      <div class="name-quantity" style="margin-top: 6px">
-        <span class="qty-label">输出单位</span>
-        <el-select
-          v-model="form.actionOutputUnit"
-          filterable
-          allow-create
-          default-first-option
-          size="small"
-          style="flex: 1"
-        >
-          <el-option v-for="u in DEFAULT_UNITS" :key="u" :label="u" :value="u" />
-        </el-select>
-      </div>
-
-      <div class="section-label" style="margin-top: 14px">输出产物</div>
-      <el-input v-model="form.output.name" placeholder="产物名称" clearable @focus="pasteTarget = 'output'" />
-      <div class="name-quantity" style="margin-top: 6px">
-        <span class="qty-label">产出数量</span>
-        <el-input-number v-model="form.output.quantity" :min="1" :max="9999" size="small" controls-position="right" class="qty-input" />
-      </div>
-      <el-input
-        v-model="form.output.description"
-        type="textarea"
-        :autosize="{ minRows: 1, maxRows: 4 }"
-        placeholder="产物解释（可选，展示在节点上）"
-        class="desc-input"
-        style="margin-top: 6px"
-      />
-      <div
-        class="drop-zone full"
-        :class="{ active: pasteTarget === 'output' }"
-        @click="pickImage(outputUpload, 'output')"
-        @mouseenter="pasteTarget = 'output'"
-        @drop="onDrop('output', $event)"
-        @dragover.prevent
-      >
-        <img v-if="form.output.image" :src="form.output.image" class="thumb" />
-        <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
-      </div>
-
-      <el-button type="primary" style="width: 100%; margin-top: 18px" @click="submit">
+      <el-button type="primary" style="width: 100%; margin-top: 14px" @click="submit">
         生成配方节点
       </el-button>
     </el-form>
@@ -359,7 +397,20 @@ function submit() {
   font-size: 13px;
   font-weight: 600;
   color: #606266;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+}
+/* 三栏布局：输入 | 加工 | 输出 */
+.form-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.form-col {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fafafa;
 }
 .name-quantity {
   display: flex;
@@ -372,14 +423,14 @@ function submit() {
   white-space: nowrap;
 }
 .qty-input {
-  width: 110px;
+  width: 100px;
   flex-shrink: 0;
 }
 .input-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px dashed #ebeef5;
 }

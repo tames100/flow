@@ -236,9 +236,10 @@ export function useRecipeGraph() {
   }
 
   /**
-   * 根据表单生成「输入物品 -> 动作节点 -> 输出物品」的节点与连线。
+   * 根据表单生成「输入物品 -> 动作节点 -> 输出物品（可多个）」的节点与连线。
    * - 若输入项选择了「已有产物」(refId)，则直接复用该节点作为来源（不新建重复物品）。
    * - 数量展示在「输入 -> 动作」的连线上（数量为 1 时不显示）。
+   * - 布局：输入在左列、动作在中间列、输出在右列（按行纵向排列，动作纵向居中）。
    */
   function addRecipeFromForm(form: RecipeForm) {
     const baseX = 80 + (nodes.value.length % 3) * 320
@@ -266,7 +267,26 @@ export function useRecipeGraph() {
       return { node: n, quantity: inp.quantity ?? 1 }
     })
 
+    // 输出节点（至少一个，可多个）
+    const outputNodes = form.outputs.map((out, j) => {
+      const n = createItemNode(
+        out.name,
+        out.image ?? '',
+        { x: baseX + 460, y: baseY + j * 90 },
+        true,
+        1,
+        out.description,
+      )
+      // 输出数量记录在输出物品节点上（用于动作 -> 输出 连线展示）
+      ;(n.data as any).quantity = out.quantity ?? 1
+      createdNodes.push(n)
+      return n
+    })
+
     // 加工动作节点：若选择了已有加工节点且勾选复用图片 -> 复用该节点；否则新建
+    // 动作节点在中间列，纵向居中对齐输入 / 输出的整体高度
+    const rowCount = Math.max(inputSources.length, outputNodes.length)
+    const actionY = baseY + ((rowCount - 1) * 90) / 2
     let actionNode: any = null
     if (form.actionRefId && form.reuseActionImage) {
       const existing = findNode(form.actionRefId)
@@ -275,10 +295,7 @@ export function useRecipeGraph() {
     if (!actionNode) {
       actionNode = createActionNode(
         form.action,
-        {
-          x: baseX + 220,
-          y: baseY + ((inputSources.length - 1) * 90) / 2,
-        },
+        { x: baseX + 220, y: actionY },
         form.actionImage ?? '',
         form.actionDescription,
         form.actionOutputUnit,
@@ -286,22 +303,6 @@ export function useRecipeGraph() {
       createdNodes.push(actionNode)
     }
 
-    const outputNode = createItemNode(
-      form.output.name,
-      form.output.image ?? '',
-      {
-        x: baseX + 460,
-        y: baseY + ((inputSources.length - 1) * 90) / 2,
-      },
-      true,
-      1,
-      form.output.description,
-    )
-    // 输出数量记录在输出物品节点上（用于动作 -> 输出 连线展示）
-    ;(outputNode.data as any).quantity = form.output.quantity ?? 1
-    createdNodes.push(outputNode)
-
-    const outQty = form.output.quantity ?? 1
     const actionOutUnit = (actionNode.data as any)?.outputUnit || DEFAULT_UNIT
 
     const newEdges: RecipeEdge[] = [
@@ -326,23 +327,27 @@ export function useRecipeGraph() {
           labelBgBorderRadius: 4,
         }
       }),
-      {
-        id: genId('e'),
-        source: actionNode.id,
-        target: outputNode.id,
-        class: 'recipe-edge',
-        // 默认虚线 + 流动动画（有向图）
-        animated: true,
-        style: { stroke: '#e6a23c', strokeWidth: 2, strokeDasharray: '8 4' },
-        // 输出边箭头橙色（从加工节点指出），单位 = 加工节点输出单位
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#e6a23c', width: 16, height: 16 },
-        unit: actionOutUnit,
-        label: edgeLabel(outQty, actionOutUnit),
-        labelStyle: { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' },
-        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
-        labelBgPadding: [4, 2] as [number, number],
-        labelBgBorderRadius: 4,
-      },
+      // 输出边：动作节点 -> 每个输出节点（橙色，单位 = 加工节点输出单位）
+      ...outputNodes.map((outputNode) => {
+        const outQty = (outputNode.data as any).quantity ?? 1
+        return {
+          id: genId('e'),
+          source: actionNode.id,
+          target: outputNode.id,
+          class: 'recipe-edge',
+          // 默认虚线 + 流动动画（有向图）
+          animated: true,
+          style: { stroke: '#e6a23c', strokeWidth: 2, strokeDasharray: '8 4' },
+          // 输出边箭头橙色（从加工节点指出），单位 = 加工节点输出单位
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#e6a23c', width: 16, height: 16 },
+          unit: actionOutUnit,
+          label: edgeLabel(outQty, actionOutUnit),
+          labelStyle: { fill: '#e6a23c', fontWeight: 700, fontSize: '12px' },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+          labelBgPadding: [4, 2] as [number, number],
+          labelBgBorderRadius: 4,
+        }
+      }),
     ]
 
     addNodes(createdNodes as any)
@@ -353,7 +358,7 @@ export function useRecipeGraph() {
     edges.value = [...edges.value, ...(newEdges as any[])] as RecipeEdge[]
 
     persist()
-    return { inputNodes: inputSources.map((s) => s.node), actionNode, outputNode }
+    return { inputNodes: inputSources.map((s) => s.node), actionNode, outputNodes }
   }
 
   /** 删除节点（连同其相关连线） */

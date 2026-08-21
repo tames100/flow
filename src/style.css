@@ -68,7 +68,9 @@ body,
 }
 
 .recipe-edge.dimmed {
-  opacity: 0.15;
+  opacity: 0.12;
+  filter: grayscale(1);
+  transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
 .recipe-edge.highlighted {

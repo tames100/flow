@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, watch, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -146,6 +146,30 @@ const selectedNodeId = ref<string | null>(null)
 const selectedEdgeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
 const formDialogVisible = ref(false)
+
+// ---- 顶部工具栏：全局搜索节点 ----
+const searchNodeId = ref<string | null>(null)
+const searchOptions = computed<{ id: string; label: string; kind: string }[]>(() =>
+  getNodes.value.map((n) => ({
+    id: n.id,
+    label: ((n.data as any)?.label as string) || n.id,
+    kind: (n.data as any)?.kind ?? '',
+  })),
+)
+
+// 选中搜索结果：聚焦居中 + 高亮其上游配方链
+function onSearchSelect(id: string | null) {
+  if (!id) return
+  const node = findNode(id)
+  if (!node) return
+  selectedNodeId.value = id
+  selectedEdgeId.value = null
+  highlightFromNode(id)
+  const w = node.dimensions?.width ?? 60
+  const h = node.dimensions?.height ?? 60
+  setCenter(node.position.x + w / 2, node.position.y + h / 2, { zoom: 1.3, duration: 400 })
+  window.getSelection()?.removeAllRanges()
+}
 
 const nodeTypes: Record<string, any> = {
   item: ItemNode,
@@ -369,6 +393,24 @@ const shortcutsList = [
     <header class="toolbar">
       <span class="brand">🎮 游戏配方可视化编辑器</span>
       <div class="tool-actions">
+        <el-select
+          v-model="searchNodeId"
+          placeholder="🔍 搜索节点"
+          filterable
+          clearable
+          size="small"
+          class="node-search"
+          @change="onSearchSelect"
+        >
+          <el-option v-for="o in searchOptions" :key="o.id" :value="o.id" :label="o.label">
+            <span style="display: flex; align-items: center; gap: 6px">
+              <el-tag size="small" :type="o.kind === 'action' ? 'warning' : 'primary'" style="width: 34px; text-align: center">
+                {{ o.kind === 'action' ? '加工' : '物品' }}
+              </el-tag>
+              <span>{{ o.label }}</span>
+            </span>
+          </el-option>
+        </el-select>
         <el-button size="small" type="primary" @click="onAddRecipe">+ 添加配方</el-button>
         <el-button size="small" type="primary" @click="onSaveState">💾 保存画布状态</el-button>
         <el-button size="small" @click="onExportFile">导出 JSON</el-button>
@@ -431,7 +473,7 @@ const shortcutsList = [
     </el-dialog>
 
     <!-- 配方录入弹窗 -->
-    <el-dialog v-model="formDialogVisible" title="配方录入" width="460px" top="40px" class="recipe-dialog"
+    <el-dialog v-model="formDialogVisible" title="配方录入" width="980px" top="40px" class="recipe-dialog"
       :close-on-click-modal="false" append-to-body>
       <FormPanel @submitted="formDialogVisible = false" />
     </el-dialog>
@@ -483,6 +525,13 @@ const shortcutsList = [
 .auto-save-unit {
   font-size: 12px;
   color: #dcdfe6;
+}
+
+.node-search {
+  width: 180px;
+}
+.node-search :deep(.el-select__wrapper) {
+  background: #fff;
 }
 
 .center {

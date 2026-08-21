@@ -81,14 +81,18 @@ export interface RecipeForm {
   actionRefId?: string
   /** 是否复用所选加工节点的图片（true=复用；false=新建节点需用户上传图片） */
   reuseActionImage?: boolean
-  output: {
+  /**
+   * 输出产物（至少一个，可多个）。
+   * 多个输入 / 多个输出均映射到同一个加工动作节点，动作与每个输出各连一条边。
+   */
+  outputs: {
     name: string
     image?: string
     /** 输出产物数量 */
     quantity?: number
     /** 输出产物解释 */
     description?: string
-  }
+  }[]
 }
 
 /** 画布视图状态（平移偏移 + 缩放），用于完整还原画布状态 */

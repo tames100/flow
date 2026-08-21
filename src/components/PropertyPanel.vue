@@ -141,7 +141,8 @@ function applyEdgeQty(e: any, q: number, unit = '') {
   const isIn = e.target === selectedId.value || e.target === edgeId.value
   const qty = Math.max(1, Math.floor(q || 1))
   const label = qty > 1 || unit ? `×${qty}${unit ? ' ' + unit : ''}` : ''
-  const color = isIn ? '#409eff' : '#e6a23c'
+  // 文字颜色继承当前线段颜色；无线段颜色时按方向回退到默认蓝/橙
+  const color = (e.style as any)?.stroke ?? (isIn ? '#409eff' : '#e6a23c')
   Object.assign(e, {
     label,
     unit: unit || undefined,

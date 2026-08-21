@@ -2,6 +2,9 @@ import { ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { RecipeEdge, RecipeNode } from '../types'
 
+/** 记录高亮前的连线动画状态，清除高亮时恢复（避免用户手动开启的动画被永久关闭） */
+const savedAnimated = new Map<string, boolean>()
+
 /**
  * useRecipeHighlight —— 配方链高亮逻辑（单独抽出的 composable）。
  *
@@ -11,7 +14,7 @@ import type { RecipeEdge, RecipeNode } from '../types'
  * 点击画布空白区域取消高亮。
  */
 export function useRecipeHighlight() {
-  const { getNodes, getEdges, updateNode, updateEdge, onPaneClick, findNode } = useVueFlow()
+  const { getNodes, getEdges, updateNode, onPaneClick, findNode } = useVueFlow()
 
   /** 当前高亮的根节点 id（被点击的节点） */
   const activeNodeId = ref<string | null>(null)
@@ -70,14 +73,18 @@ export function useRecipeHighlight() {
     })
     getEdges.value.forEach((e: RecipeEdge) => {
       const highlighted = edgeIds.has(e.id)
-      updateEdge(e as any, {
+      // 记录高亮前的动画状态（仅首次）
+      if (!savedAnimated.has(e.id)) savedAnimated.set(e.id, !!e.animated)
+      // 直接修改响应式连线对象，class 即时生效：
+      // 高亮链上的边开流动动画；其余无关边停止动画并置灰
+      Object.assign(e as any, {
         class: highlighted ? 'recipe-edge highlighted' : 'recipe-edge dimmed',
         animated: highlighted,
-      } as any)
+      })
     })
   }
 
-  /** 清除高亮：恢复默认 class */
+  /** 清除高亮：恢复默认 class 与用户设置的动画状态 */
   function clearHighlight() {
     activeNodeId.value = null
     isHighlighting.value = false
@@ -85,8 +92,12 @@ export function useRecipeHighlight() {
       updateNode(n.id, { class: '' } as any)
     })
     getEdges.value.forEach((e: RecipeEdge) => {
-      updateEdge(e as any, { class: 'recipe-edge', animated: false } as any)
+      Object.assign(e as any, {
+        class: 'recipe-edge',
+        animated: savedAnimated.get(e.id) ?? false,
+      })
     })
+    savedAnimated.clear()
   }
 
   /** 点击某个节点触发高亮 */
