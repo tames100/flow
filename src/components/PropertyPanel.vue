@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import { useVueFlow, MarkerType } from '@vue-flow/core'
 import { useRecipeGraph, useActionTypes, useImagePreview, useImageCrop } from '../composables'
 import { DEFAULT_UNIT, DEFAULT_UNITS } from '../types'

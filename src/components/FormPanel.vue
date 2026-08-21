@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRecipeGraph, useActionTypes, useImageUpload, useImageCrop, type RecipeForm } from '../composables'
 import { DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 

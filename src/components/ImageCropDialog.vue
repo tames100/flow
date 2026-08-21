@@ -29,6 +29,8 @@ watch(
       cropper.value = null
     }
   },
+  // 组件改为按需渲染（v-if 挂载），挂载时 visible 可能已为 true，需立即初始化
+  { immediate: true },
 )
 
 function initCropper() {

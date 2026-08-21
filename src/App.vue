@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
@@ -23,6 +22,7 @@ import {
   useRecipeHighlight,
   useCanvasShortcuts,
   useContextMenu,
+  useImageCrop,
   type RecipeGraphData,
 } from './composables'
 
@@ -356,8 +356,8 @@ const shortcutsList = [
     <!-- 全局图片放大预览 -->
     <ImagePreview />
 
-    <!-- 全局图片裁剪弹窗（上传图片时先裁剪再写入节点） -->
-    <ImageCropDialog />
+    <!-- 全局图片裁剪弹窗（上传图片时先裁剪再写入节点，按需渲染） -->
+    <ImageCropDialog v-if="crop.state.visible" />
 
     <!-- 自定义右键菜单 -->
     <ContextMenu @create-item="onCtxCreateItem" @create-action="onCtxCreateAction" @edit="onCtxEdit"
