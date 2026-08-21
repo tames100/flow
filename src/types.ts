@@ -6,6 +6,9 @@ export const DEFAULT_ACTIONS: string[] = ['合成', '搅拌', '切割', '熔炼'
 /** 默认数量单位 */
 export const DEFAULT_UNIT = '个'
 
+/** 内置附加操作 / 附加条件（默认值，用户可在此基础上自定义扩展），如「发酵 -> 需要加热」 */
+export const DEFAULT_EXTRAS: string[] = ['无需特殊条件', '需要加热', '需要恒温', '需要避光', '需要密封']
+
 /** 内置数量单位（默认值，画布上出现过的单位会自动并入下拉选项） */
 export const DEFAULT_UNITS: string[] = ['个', 'ml', '组', '份', 'kg']
 
@@ -37,6 +40,8 @@ export interface ActionNodeData {
   description?: string
   /** 输出单位（加工节点产出物的单位，下游加工节点的输入单位自动继承该值） */
   outputUnit?: string
+  /** 附加操作 / 附加条件（如「发酵」是否需要加热），支持用户自定义 */
+  extra?: string
 }
 
 export type RecipeNodeData = ItemNodeData | ActionNodeData
@@ -74,6 +79,8 @@ export interface RecipeForm {
   actionDescription?: string
   /** 加工节点输出单位（其产出物的单位，下游输入单位自动继承） */
   actionOutputUnit?: string
+  /** 加工附加操作 / 附加条件（如「发酵」是否需要加热），支持用户自定义 */
+  actionExtra?: string
   /**
    * 若选择了画布中已有的加工节点，记录其节点 id。
    * 配合 reuseActionImage 决定是复用该节点还是新建同名独立节点。

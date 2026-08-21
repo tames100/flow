@@ -2,9 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import { useVueFlow, MarkerType } from '@vue-flow/core'
 import { useRecipeGraph, useActionTypes, useImagePreview, useImageCrop } from '../composables'
-import { DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
+import { DEFAULT_EXTRAS, DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 
-const { findNode, updateNode, getEdges, removeEdges } = useVueFlow()
+const { findNode, updateNode, getNodes, getEdges, removeEdges } = useVueFlow()
 const {
   deleteNode,
   duplicateNode,
@@ -98,6 +98,27 @@ const outputUnit = computed({
     }
   },
 })
+
+/** 加工节点附加操作 / 附加条件（如「发酵」是否需要加热）：支持选择内置项或自定义输入 */
+const actionExtra = computed({
+  get: () => (node.value?.data as any)?.extra ?? '',
+  set: (v: string) => {
+    if (node.value) {
+      updateNode(node.value.id, { data: { ...node.value.data, extra: v || undefined } })
+      persist()
+    }
+  },
+})
+
+/** 收集「可选的附加操作」：内置默认项 + 画布上所有加工节点已使用的值 */
+function getExtraOptions(): string[] {
+  const set = new Set<string>(DEFAULT_EXTRAS)
+  getNodes.value.forEach((n) => {
+    const e = (n.data as any)?.extra
+    if (e) set.add(e)
+  })
+  return [...set]
+}
 
 const image = computed(() => (node.value?.data as any)?.image ?? '')
 
@@ -425,7 +446,7 @@ watch(edgeId, (v) => emit('update:edge', v))
           <el-form-item label="目标数量（想要多少个该产物）">
             <el-input-number v-model="traceQty" :min="1" :max="999999" controls-position="right" style="width: 100%" />
           </el-form-item>
-          <div class="trace-tip">按上游加工节点的输入 / 输出数量反推所需<b>基本原料</b>（不依赖其他加工节点、直接作为原料消耗的源头物品）：</div>
+          <div class="trace-tip">按上游加工节点的输入/输出数量反推所需<b>基本原料</b>（不依赖其他加工节点、直接作为原料消耗的源头物品）：</div>
           <div v-if="isBasicSelf" class="trace-result">
             <div class="trace-row">
               <span class="trace-name">{{ label }}</span>
@@ -474,6 +495,12 @@ watch(edgeId, (v) => emit('update:edge', v))
             <el-select v-model="action" style="width: 100%" filterable allow-create default-first-option
               placeholder="选择或输入自定义动作">
               <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="附加操作 / 条件（如发酵需加热）">
+            <el-select v-model="actionExtra" style="width: 100%" filterable allow-create default-first-option clearable
+              placeholder="选择或自定义，如：需要加热">
+              <el-option v-for="x in getExtraOptions()" :key="x" :label="x" :value="x" />
             </el-select>
           </el-form-item>
           <el-form-item label="输出单位（下游输入自动继承）">

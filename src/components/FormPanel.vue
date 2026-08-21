@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRecipeGraph, useActionTypes, useImageUpload, useImageCrop, type RecipeForm } from '../composables'
-import { DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
+import { DEFAULT_EXTRAS, DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 
 const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
@@ -14,6 +14,7 @@ const form = reactive<RecipeForm>({
   action: '合成',
   actionImage: '',
   actionDescription: '',
+  actionExtra: '',
   actionOutputUnit: DEFAULT_UNIT,
   actionRefId: undefined,
   reuseActionImage: true,
@@ -127,6 +128,7 @@ function onSelectExistingAction(nodeId?: string) {
     form.actionImage = act.image
   }
   form.actionOutputUnit = act.outputUnit
+  if (act.extra) form.actionExtra = act.extra
 }
 
 /** 切换「复用图片」：勾选则带出所选加工节点图片，取消则清空（需用户上传） */
@@ -168,6 +170,7 @@ function submit() {
     action: form.action,
     actionImage: form.actionImage,
     actionDescription: form.actionDescription ?? '',
+    actionExtra: form.actionExtra ?? '',
     actionOutputUnit: form.actionOutputUnit,
     actionRefId: form.actionRefId,
     reuseActionImage: form.reuseActionImage,
@@ -199,6 +202,7 @@ function submit() {
   form.outputs = [{ name: '', image: '', quantity: 1, description: '' }]
   form.actionImage = ''
   form.actionDescription = ''
+  form.actionExtra = ''
   form.actionOutputUnit = DEFAULT_UNIT
   form.actionRefId = undefined
   form.reuseActionImage = true
@@ -327,6 +331,21 @@ function submit() {
             class="desc-input"
             style="margin-top: 6px"
           />
+          <div class="name-quantity" style="margin-top: 6px">
+            <span class="qty-label">附加操作</span>
+            <el-select
+              v-model="form.actionExtra"
+              filterable
+              allow-create
+              default-first-option
+              clearable
+              size="small"
+              style="flex: 1"
+              placeholder="选择或自定义，如：需要加热"
+            >
+              <el-option v-for="x in DEFAULT_EXTRAS" :key="x" :label="x" :value="x" />
+            </el-select>
+          </div>
           <div class="name-quantity" style="margin-top: 6px">
             <span class="qty-label">输出单位</span>
             <el-select

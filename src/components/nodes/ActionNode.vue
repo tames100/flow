@@ -37,6 +37,9 @@ function onContextMenu(e: MouseEvent) {
       <span v-else class="action-icon">{{ icon }}</span>
       <span class="action-label">{{ data.label }}</span>
       <div v-if="data.description" class="node-desc" :title="data.description">{{ data.description }}</div>
+      <div v-if="data.extra" class="node-extra" :title="`附加操作 / 条件：${data.extra}`">
+        <span class="extra-icon">📌</span>{{ data.extra }}
+      </div>
     </div>
 
     <!-- 输出产物（右侧出点） -->
@@ -113,5 +116,27 @@ function onContextMenu(e: MouseEvent) {
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 附加操作 / 附加条件徽章 */
+.node-extra {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 170px;
+  margin-top: 2px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #b35a00;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px dashed rgba(230, 162, 60, 0.7);
+  border-radius: 6px;
+  word-break: break-all;
+}
+
+.extra-icon {
+  flex-shrink: 0;
+  font-size: 10px;
 }
 </style>

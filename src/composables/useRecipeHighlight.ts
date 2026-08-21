@@ -4,6 +4,8 @@ import type { RecipeEdge, RecipeNode } from '../types'
 
 /** 记录高亮前的连线动画状态，清除高亮时恢复（避免用户手动开启的动画被永久关闭） */
 const savedAnimated = new Map<string, boolean>()
+/** 记录高亮前的线段文字字重，清除高亮时恢复（高亮期间不加粗） */
+const savedLabelWeight = new Map<string, number | undefined>()
 
 /**
  * useRecipeHighlight —— 配方链高亮逻辑（单独抽出的 composable）。
@@ -73,13 +75,16 @@ export function useRecipeHighlight() {
     })
     getEdges.value.forEach((e: RecipeEdge) => {
       const highlighted = edgeIds.has(e.id)
-      // 记录高亮前的动画状态（仅首次）
+      // 记录高亮前的动画状态与文字字重（仅首次）
       if (!savedAnimated.has(e.id)) savedAnimated.set(e.id, !!e.animated)
+      if (!savedLabelWeight.has(e.id)) savedLabelWeight.set(e.id, (e as any).labelStyle?.fontWeight)
       // 直接修改响应式连线对象，class 即时生效：
       // 高亮链上的边开流动动画；其余无关边停止动画并置灰
+      // 高亮期间线段文字不加粗，避免视觉过重
       Object.assign(e as any, {
         class: highlighted ? 'recipe-edge highlighted' : 'recipe-edge dimmed',
         animated: highlighted,
+        labelStyle: { ...((e as any).labelStyle ?? {}), fontWeight: 200 },
       })
     })
   }
@@ -95,9 +100,11 @@ export function useRecipeHighlight() {
       Object.assign(e as any, {
         class: 'recipe-edge',
         animated: savedAnimated.get(e.id) ?? false,
+        labelStyle: { ...((e as any).labelStyle ?? {}), fontWeight: savedLabelWeight.get(e.id) ?? 700 },
       })
     })
     savedAnimated.clear()
+    savedLabelWeight.clear()
   }
 
   /** 点击某个节点触发高亮 */
