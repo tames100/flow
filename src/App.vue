@@ -198,13 +198,15 @@ function onReset() {
       <FormPanel @submitted="formDialogVisible = false" />
     </el-dialog>
 
-    <!-- 选中节点后的右侧属性抽屉 -->
+    <!-- 选中节点后的右侧属性抽屉（非模态：画布保持明亮且可继续点击切换节点） -->
     <el-drawer
       v-model="drawerVisible"
       title="属性面板"
       direction="rtl"
       size="320px"
       :with-header="true"
+      :modal="false"
+      :close-on-press-escape="true"
       @close="onDrawerClose"
     >
       <PropertyPanel v-model="selectedNodeId" />
