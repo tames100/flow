@@ -16,6 +16,7 @@ const iconMap: Record<string, string> = {
 }
 
 const icon = computed(() => iconMap[props.data.action] ?? '⚙️')
+const hasImage = computed(() => !!props.data.image)
 </script>
 
 <template>
@@ -24,7 +25,8 @@ const icon = computed(() => iconMap[props.data.action] ?? '⚙️')
     <Handle type="target" :position="Position.Left" :connectable="true" />
 
     <div class="action-body">
-      <span class="action-icon">{{ icon }}</span>
+      <img v-if="hasImage" :src="data.image" class="action-img" :alt="data.label" />
+      <span v-else class="action-icon">{{ icon }}</span>
       <span class="action-label">{{ data.label }}</span>
     </div>
 
@@ -55,6 +57,14 @@ const icon = computed(() => iconMap[props.data.action] ?? '⚙️')
 .action-icon {
   font-size: 26px;
   line-height: 1;
+}
+
+.action-img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .action-label {

@@ -71,12 +71,16 @@ export function useRecipeGraph() {
   }
 
   /** 创建一个动作节点 */
-  function createActionNode(action: string, position = { x: 0, y: 0 }): RecipeNode {
+  function createActionNode(
+    action: string,
+    position = { x: 0, y: 0 },
+    image = '',
+  ): RecipeNode {
     return {
       id: genId('action'),
       type: 'action',
       position,
-      data: { kind: 'action', label: action, action },
+      data: { kind: 'action', label: action, action, image },
     }
   }
 
@@ -95,10 +99,14 @@ export function useRecipeGraph() {
       }),
     )
 
-    const actionNode = createActionNode(form.action, {
-      x: baseX + 220,
-      y: baseY + ((inputNodes.length - 1) * 90) / 2,
-    })
+    const actionNode = createActionNode(
+      form.action,
+      {
+        x: baseX + 220,
+        y: baseY + ((inputNodes.length - 1) * 90) / 2,
+      },
+      form.actionImage ?? '',
+    )
 
     const outputNode = createItemNode(form.output.name, form.output.image ?? '', {
       x: baseX + 460,
@@ -234,6 +242,17 @@ export function useRecipeGraph() {
     if (persistFlag) persist()
   }
 
+  /** 列出当前画布上已有的物品节点（供配方录入「选择已有产物」使用） */
+  function getItemNodes() {
+    return nodes.value
+      .filter((n) => n.data?.kind === 'item')
+      .map((n) => ({
+        id: n.id,
+        name: (n.data as any).label ?? '',
+        image: (n.data as any).image ?? '',
+      }))
+  }
+
   return {
     nodes,
     edges,
@@ -247,5 +266,6 @@ export function useRecipeGraph() {
     importJSON,
     persist,
     loadFromStorage,
+    getItemNodes,
   }
 }

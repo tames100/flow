@@ -11,6 +11,7 @@ const { allActions } = useActionTypes()
 
 const selectedId = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const actionFileInput = ref<HTMLInputElement | null>(null)
 
 const node = computed(() => (selectedId.value ? findNode(selectedId.value) : null))
 
@@ -64,6 +65,27 @@ function onFileChange(e: Event) {
       persist()
     }
     ElMessage.success('图片已替换')
+  }
+  reader.readAsDataURL(f)
+  ;(e.target as HTMLInputElement).value = ''
+}
+
+// 加工动作图标图片替换（仅动作节点）
+function pickActionImage() {
+  actionFileInput.value?.click()
+}
+
+function onActionFileChange(e: Event) {
+  const f = (e.target as HTMLInputElement).files?.[0]
+  if (!f) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    const dataURL = reader.result as string
+    if (node.value) {
+      updateNode(node.value.id, { data: { ...node.value.data, image: dataURL } })
+      persist()
+    }
+    ElMessage.success('动作图标已替换')
   }
   reader.readAsDataURL(f)
   ;(e.target as HTMLInputElement).value = ''
@@ -134,6 +156,20 @@ watch(selectedId, (v) => emit('update:modelValue', v))
             >
               <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
             </el-select>
+          </el-form-item>
+          <el-form-item label="动作图标">
+            <div class="img-box">
+              <img v-if="image" :src="image" class="preview" />
+              <div v-else class="preview placeholder">默认</div>
+              <el-button size="small" type="primary" @click="pickActionImage">替换图标</el-button>
+            </div>
+            <input
+              ref="actionFileInput"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="onActionFileChange"
+            />
           </el-form-item>
         </template>
 

@@ -6,64 +6,60 @@ import { useRecipeGraph } from '../composables/useRecipeGraph'
 import { useActionTypes } from '../composables/useActionTypes'
 import { useImageUpload } from '../composables/useImageUpload'
 
-const { addRecipeFromForm, detectCycle } = useRecipeGraph()
+const { addRecipeFromForm, detectCycle, getItemNodes } = useRecipeGraph()
 const { allActions } = useActionTypes()
 
 const form = reactive<RecipeForm>({
   inputs: [{ name: '', image: '' }],
   action: '合成',
+  actionImage: '',
   output: { name: '', image: '' },
 })
 
 const inputUpload = useImageUpload()
 const outputUpload = useImageUpload()
+const actionUpload = useImageUpload()
 
 /**
- * 上传目标：'output' 或 输入行的索引（数字）。
+ * 上传目标：'action' | 'output' | 输入行的索引（数字）。
  * 用于剪贴板粘贴时，把图片写入当前「激活」的图片槽。
  */
 const pasteTarget = ref<string | number>('output')
 
 function setImage(target: string | number, dataUrl: string) {
   if (target === 'output') form.output.image = dataUrl
+  else if (target === 'action') form.actionImage = dataUrl
   else form.inputs[target as number].image = dataUrl
 }
 
-function pickInputImage(idx: number) {
-  const inp = inputUpload.fileInput.value
+function pickImage(upload: ReturnType<typeof useImageUpload>, target: string | number) {
+  const inp = upload.fileInput.value
   if (!inp) return
   inp.onchange = (e) => {
     const f = (e.target as HTMLInputElement).files?.[0]
     if (!f) return
-    inputUpload.handleFile(f).then(() => setImage(idx, inputUpload.image.value))
+    upload.handleFile(f).then(() => setImage(target, upload.image.value))
   }
   inp.click()
 }
 
-function pickOutputImage() {
-  const inp = outputUpload.fileInput.value
-  if (!inp) return
-  inp.onchange = (e) => {
-    const f = (e.target as HTMLInputElement).files?.[0]
-    if (!f) return
-    outputUpload.handleFile(f).then(() => setImage('output', outputUpload.image.value))
-  }
-  inp.click()
-}
-
-// 拖拽放置（每个图片槽的 drop 区域）
+// 拖拽放置
 async function onDrop(target: string | number, e: DragEvent) {
   e.preventDefault()
   pasteTarget.value = target
-  await inputUpload.handleFile(e.dataTransfer?.files?.[0])
-  setImage(target, inputUpload.image.value)
+  const upload = target === 'output' ? outputUpload : target === 'action' ? actionUpload : inputUpload
+  await upload.handleFile(e.dataTransfer?.files?.[0])
+  setImage(target, upload.image.value)
 }
 
 // 全局粘贴：写入当前激活的图片槽
 async function onPaste(e: ClipboardEvent) {
-  await inputUpload.onPaste(e)
-  if (!inputUpload.image.value) return
-  setImage(pasteTarget.value, inputUpload.image.value)
+  const upload = pasteTarget.value === 'output' ? outputUpload
+    : pasteTarget.value === 'action' ? actionUpload
+    : inputUpload
+  await upload.onPaste(e)
+  if (!upload.image.value) return
+  setImage(pasteTarget.value, upload.image.value)
 }
 
 onMounted(() => window.addEventListener('paste', onPaste))
@@ -81,6 +77,15 @@ function removeInputRow(idx: number) {
   form.inputs.splice(idx, 1)
 }
 
+/** 选择已有产物：带入名称与图片 */
+function onSelectExisting(idx: number, nodeId: string) {
+  const item = getItemNodes().find((n) => n.id === nodeId)
+  if (!item) return
+  form.inputs[idx].name = item.name
+  form.inputs[idx].image = item.image
+  form.inputs[idx].refId = nodeId
+}
+
 function submit() {
   const validInputs = form.inputs.filter((i) => i.name.trim())
   if (validInputs.length === 0) {
@@ -93,8 +98,13 @@ function submit() {
   }
 
   addRecipeFromForm({
-    inputs: validInputs.map((i) => ({ name: i.name.trim(), image: i.image })),
+    inputs: validInputs.map((i) => ({
+      name: i.name.trim(),
+      image: i.image,
+      refId: i.refId,
+    })),
     action: form.action,
+    actionImage: form.actionImage,
     output: { name: form.output.name.trim(), image: form.output.image },
   })
 
@@ -113,7 +123,9 @@ function submit() {
   // 重置输入行（保留一行）
   form.inputs = [{ name: '', image: '' }]
   form.output = { name: '', image: '' }
+  form.actionImage = ''
   outputUpload.reset()
+  actionUpload.reset()
 }
 </script>
 
@@ -124,36 +136,83 @@ function submit() {
     <!-- 隐藏 file input（本地文件选择共用） -->
     <input ref="inputUpload.fileInput" type="file" accept="image/*" style="display: none" />
     <input ref="outputUpload.fileInput" type="file" accept="image/*" style="display: none" />
+    <input ref="actionUpload.fileInput" type="file" accept="image/*" style="display: none" />
 
     <el-form label-position="top" size="default">
-      <div class="section-label">输入物品（支持上传图 / 拖拽 / 粘贴）</div>
+      <div class="section-label">输入物品</div>
       <div v-for="(inp, idx) in form.inputs" :key="idx" class="input-row">
-        <el-input v-model="inp.name" placeholder="物品名称" clearable @focus="pasteTarget = idx" />
-        <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
-        <el-button v-if="form.inputs.length > 1" link type="danger" size="small"
-          @click="removeInputRow(idx)">删除</el-button>
-        <div class="drop-zone" :class="{ active: pasteTarget === idx }" @click="pickInputImage(idx)"
-          @mouseenter="pasteTarget = idx" @drop="onDrop(idx, $event)" @dragover.prevent>
+        <el-select
+          :model-value="inp.refId"
+          placeholder="选择已有产物（可选）"
+          clearable
+          filterable
+          style="width: 100%"
+          @focus="pasteTarget = idx"
+          @change="(v: string) => onSelectExisting(idx, v)"
+        >
+          <el-option v-for="n in getItemNodes()" :key="n.id" :label="n.name" :value="n.id">
+            <span style="display: flex; align-items: center; gap: 6px">
+              <img v-if="n.image" :src="n.image" class="opt-thumb" />
+              <span>{{ n.name || '未命名' }}</span>
+            </span>
+          </el-option>
+        </el-select>
+        <el-input v-model="inp.name" placeholder="或手动输入物品名称" clearable @focus="pasteTarget = idx" />
+        <div class="row-actions">
+          <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
+          <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
+        </div>
+        <!-- 与输出产物一致的整行宽拖拽上传区 -->
+        <div
+          class="drop-zone full"
+          :class="{ active: pasteTarget === idx }"
+          @click="pickImage(inputUpload, idx)"
+          @mouseenter="pasteTarget = idx"
+          @drop="onDrop(idx, $event)"
+          @dragover.prevent
+        >
           <img v-if="inp.image" :src="inp.image" class="thumb" />
-          <span v-else class="drop-hint">点击/拖拽/粘贴</span>
+          <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
         </div>
       </div>
       <el-button text type="primary" @click="addInputRow">+ 添加输入物品</el-button>
 
       <div class="section-label" style="margin-top: 14px">加工动作</div>
-      <el-select v-model="form.action" style="width: 100%" filterable allow-create default-first-option
-        placeholder="选择或输入自定义动作">
+      <el-select
+        v-model="form.action"
+        style="width: 100%"
+        filterable
+        allow-create
+        default-first-option
+        placeholder="选择或输入自定义动作"
+      >
         <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
       </el-select>
-
-      <div class="section-label" style="margin-top: 14px">
-        输出产物（支持上传图 / 拖拽 / 粘贴）
+      <!-- 加工动作图标图片上传（点击/拖拽/粘贴） -->
+      <div
+        class="drop-zone full"
+        :class="{ active: pasteTarget === 'action' }"
+        @click="pickImage(actionUpload, 'action')"
+        @mouseenter="pasteTarget = 'action'"
+        @drop="onDrop('action', $event)"
+        @dragover.prevent
+      >
+        <img v-if="form.actionImage" :src="form.actionImage" class="thumb" />
+        <span v-else class="drop-hint">点击 / 拖拽 / 粘贴动作图标</span>
       </div>
+
+      <div class="section-label" style="margin-top: 14px">输出产物</div>
       <el-input v-model="form.output.name" placeholder="产物名称" clearable @focus="pasteTarget = 'output'" />
-      <div class="drop-zone output" :class="{ active: pasteTarget === 'output' }" @click="pickOutputImage"
-        @mouseenter="pasteTarget = 'output'" @drop="onDrop('output', $event)" @dragover.prevent>
+      <div
+        class="drop-zone full"
+        :class="{ active: pasteTarget === 'output' }"
+        @click="pickImage(outputUpload, 'output')"
+        @mouseenter="pasteTarget = 'output'"
+        @drop="onDrop('output', $event)"
+        @dragover.prevent
+      >
         <img v-if="form.output.image" :src="form.output.image" class="thumb" />
-        <span v-else class="drop-hint">点击/拖拽/粘贴图片</span>
+        <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
       </div>
 
       <el-button type="primary" style="width: 100%; margin-top: 18px" @click="submit">
@@ -169,38 +228,36 @@ function submit() {
   height: 100%;
   overflow-y: auto;
 }
-
 .panel-title {
   margin: 0 0 12px;
   font-size: 16px;
 }
-
 .section-label {
   font-size: 13px;
   font-weight: 600;
   color: #606266;
   margin-bottom: 6px;
 }
-
 .input-row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #ebeef5;
 }
-
+.row-actions {
+  display: flex;
+  gap: 6px;
+}
 .thumb {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid #dcdfe6;
 }
-
 .drop-zone {
-  width: 34px;
-  height: 34px;
   border: 1px dashed #c0c4cc;
   border-radius: 6px;
   display: flex;
@@ -209,23 +266,22 @@ function submit() {
   cursor: pointer;
   overflow: hidden;
 }
-
-.drop-zone.output {
+.drop-zone.full {
   width: 100%;
   height: 44px;
-  margin-top: 6px;
 }
-
 .drop-zone.active {
   border-color: #409eff;
   background: #ecf5ff;
 }
-
 .drop-hint {
-  font-size: 10px;
+  font-size: 12px;
   color: #c0c4cc;
-  text-align: center;
-  line-height: 1.1;
-  padding: 0 2px;
+}
+.opt-thumb {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 4px;
 }
 </style>

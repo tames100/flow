@@ -21,6 +21,8 @@ export interface ActionNodeData {
   kind: 'action'
   label: string
   action: string
+  /** 加工动作图标图片（dataURL 或 url，空字符串表示用默认图标） */
+  image: string
 }
 
 export type RecipeNodeData = ItemNodeData | ActionNodeData
@@ -30,8 +32,10 @@ export type RecipeEdge = Edge
 
 /** 表单录入：一条配方 */
 export interface RecipeForm {
-  inputs: { name: string; image?: string }[]
+  inputs: { name: string; image?: string; /** 若来自已有产物节点，记录其节点 id */ refId?: string }[]
   action: string
+  /** 加工动作图标图片 */
+  actionImage?: string
   output: { name: string; image?: string }
 }
 
