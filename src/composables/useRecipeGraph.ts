@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type {
   RecipeEdge,
@@ -7,6 +7,9 @@ import type {
   RecipeNode,
   RecipeNodeData,
 } from '../types'
+import { useActionTypes } from './useActionTypes'
+
+const STORAGE_KEY = 'vflow_graph_data'
 
 let nodeSeq = 1
 
@@ -20,6 +23,37 @@ const edges = ref<any[]>([])
 export function useRecipeGraph() {
   const { addNodes, addEdges, removeNodes, removeEdges, setNodes, setEdges, findNode } =
     useVueFlow()
+  const { allActions } = useActionTypes()
+
+  /** 自动持久化：任何修改后写入 localStorage */
+  function persist() {
+    try {
+      const payload: RecipeGraphData = {
+        version: '1.0',
+        actions: allActions(),
+        nodes: JSON.parse(JSON.stringify(nodes.value)),
+        edges: JSON.parse(JSON.stringify(edges.value)),
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch (e) {
+      // localStorage 容量超限等异常时静默忽略
+      console.warn('自动保存失败', e)
+    }
+  }
+
+  /** 从 localStorage 恢复（应用启动时调用一次） */
+  function loadFromStorage(): boolean {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return false
+      const data = JSON.parse(raw) as RecipeGraphData
+      if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) return false
+      importJSON(data, false)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   /** 创建一个物品节点 */
   function createItemNode(
@@ -37,7 +71,7 @@ export function useRecipeGraph() {
   }
 
   /** 创建一个动作节点 */
-  function createActionNode(action: ActionType, position = { x: 0, y: 0 }): RecipeNode {
+  function createActionNode(action: string, position = { x: 0, y: 0 }): RecipeNode {
     return {
       id: genId('action'),
       type: 'action',
@@ -95,6 +129,7 @@ export function useRecipeGraph() {
     nodes.value = [...nodes.value, ...(newNodes as any[])] as RecipeNode[]
     edges.value = [...edges.value, ...(newEdges as any[])] as RecipeEdge[]
 
+    persist()
     return { inputNodes, actionNode, outputNode }
   }
 
@@ -105,6 +140,7 @@ export function useRecipeGraph() {
     removeNodes(id)
     nodes.value = nodes.value.filter((n) => n.id !== id)
     edges.value = edges.value.filter((e) => e.source !== id && e.target !== id)
+    persist()
   }
 
   /** 复制节点（仅复制物品/动作节点本身，不复制连线） */
@@ -119,6 +155,7 @@ export function useRecipeGraph() {
     } as RecipeNode
     addNodes([copy] as any)
     nodes.value = [...nodes.value, copy]
+    persist()
     return copy
   }
 
@@ -174,22 +211,27 @@ export function useRecipeGraph() {
 
   /** 导出 JSON */
   function exportJSON(): RecipeGraphData {
+    const { allActions } = useActionTypes()
     return {
       version: '1.0',
+      actions: allActions(),
       nodes: JSON.parse(JSON.stringify(nodes.value)),
       edges: JSON.parse(JSON.stringify(edges.value)),
     }
   }
 
-  /** 导入 JSON（覆盖当前图） */
-  function importJSON(data: RecipeGraphData) {
+  /** 导入 JSON（覆盖当前图）。persist=false 时不重复写回（用于启动时从存储恢复） */
+  function importJSON(data: RecipeGraphData, persistFlag = true) {
     if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
       throw new Error('JSON 结构不合法：缺少 nodes / edges')
     }
+    const { mergeImported } = useActionTypes()
+    mergeImported(data.actions)
     setNodes(data.nodes)
     setEdges(data.edges)
     nodes.value = JSON.parse(JSON.stringify(data.nodes))
     edges.value = JSON.parse(JSON.stringify(data.edges))
+    if (persistFlag) persist()
   }
 
   return {
@@ -203,5 +245,7 @@ export function useRecipeGraph() {
     detectCycle,
     exportJSON,
     importJSON,
+    persist,
+    loadFromStorage,
   }
 }

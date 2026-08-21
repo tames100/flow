@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -20,8 +20,14 @@ import { useRecipeHighlight } from './composables/useRecipeHighlight'
 import type { RecipeGraphData } from './types'
 
 const { onNodeClick, onConnect, addEdges } = useVueFlow()
-const { deleteNode, detectCycle, exportJSON, importJSON } = useRecipeGraph()
+const { deleteNode, detectCycle, exportJSON, importJSON, persist, loadFromStorage } =
+  useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
+
+// 启动时从 localStorage 恢复自动保存的数据
+onMounted(() => {
+  loadFromStorage()
+})
 
 const selectedNodeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
@@ -41,6 +47,7 @@ onNodeClick(({ node }) => {
 // 连线时记录（供手动拖拽连接使用）
 onConnect((connection) => {
   addEdges([{ ...connection, id: `e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, class: 'recipe-edge' }])
+  persist()
   const cycle = detectCycle()
   if (cycle.length > 0) {
     ElMessageBox.alert(
@@ -117,7 +124,7 @@ function onReset() {
     type: 'warning',
   })
     .then(() => {
-      importJSON({ version: '1.0', nodes: [], edges: [] })
+      importJSON({ version: '1.0', actions: [], nodes: [], edges: [] })
       clearHighlight()
       selectedNodeId.value = null
     })

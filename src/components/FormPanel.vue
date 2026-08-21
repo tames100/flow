@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ACTION_TYPES, type ActionType, type RecipeForm } from '../types'
+import type { RecipeForm } from '../types'
 import { useRecipeGraph } from '../composables/useRecipeGraph'
+import { useActionTypes } from '../composables/useActionTypes'
 import { useImageUpload } from '../composables/useImageUpload'
 
 const { addRecipeFromForm, detectCycle } = useRecipeGraph()
+const { allActions } = useActionTypes()
 
 const form = reactive<RecipeForm>({
   inputs: [{ name: '', image: '' }],
@@ -71,7 +73,7 @@ function submit() {
 
   addRecipeFromForm({
     inputs: validInputs.map((i) => ({ name: i.name.trim(), image: i.image })),
-    action: form.action as ActionType,
+    action: form.action,
     output: { name: form.output.name.trim(), image: form.output.image },
   })
 
@@ -130,8 +132,15 @@ function submit() {
       <el-button text type="primary" @click="addInputRow">+ 添加输入物品</el-button>
 
       <div class="section-label" style="margin-top: 14px">加工动作</div>
-      <el-select v-model="form.action" style="width: 100%">
-        <el-option v-for="a in ACTION_TYPES" :key="a" :label="a" :value="a" />
+      <el-select
+        v-model="form.action"
+        style="width: 100%"
+        filterable
+        allow-create
+        default-first-option
+        placeholder="选择或输入自定义动作"
+      >
+        <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
       </el-select>
 
       <div class="section-label" style="margin-top: 14px">输出产物</div>

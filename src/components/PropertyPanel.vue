@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useVueFlow } from '@vue-flow/core'
-import { ACTION_TYPES, type ActionType } from '../types'
 import { useRecipeGraph } from '../composables/useRecipeGraph'
+import { useActionTypes } from '../composables/useActionTypes'
 
 const { findNode, updateNode } = useVueFlow()
-const { deleteNode, duplicateNode } = useRecipeGraph()
+const { deleteNode, duplicateNode, persist } = useRecipeGraph()
+const { allActions } = useActionTypes()
 
 const selectedId = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -19,22 +20,30 @@ const isAction = computed(() => node.value?.data?.kind === 'action')
 const label = computed({
   get: () => (node.value?.data ? (node.value.data as any).label ?? '' : ''),
   set: (v: string) => {
-    if (node.value) updateNode(node.value.id, { data: { ...node.value.data, label: v } })
+    if (node.value) {
+      updateNode(node.value.id, { data: { ...node.value.data, label: v } })
+      persist()
+    }
   },
 })
 
 const showLabel = computed({
   get: () => (node.value?.data as any)?.showLabel ?? true,
   set: (v: boolean) => {
-    if (node.value) updateNode(node.value.id, { data: { ...node.value.data, showLabel: v } })
+    if (node.value) {
+      updateNode(node.value.id, { data: { ...node.value.data, showLabel: v } })
+      persist()
+    }
   },
 })
 
 const action = computed({
   get: () => (node.value?.data as any)?.action ?? '合成',
-  set: (v: ActionType) => {
-    if (node.value)
+  set: (v: string) => {
+    if (node.value) {
       updateNode(node.value.id, { data: { ...node.value.data, action: v, label: v } })
+      persist()
+    }
   },
 })
 
@@ -50,8 +59,10 @@ function onFileChange(e: Event) {
   const reader = new FileReader()
   reader.onload = () => {
     const dataURL = reader.result as string
-    if (node.value)
+    if (node.value) {
       updateNode(node.value.id, { data: { ...node.value.data, image: dataURL } })
+      persist()
+    }
     ElMessage.success('图片已替换')
   }
   reader.readAsDataURL(f)
@@ -113,8 +124,15 @@ watch(selectedId, (v) => emit('update:modelValue', v))
 
         <template v-if="isAction">
           <el-form-item label="加工动作">
-            <el-select v-model="action" style="width: 100%">
-              <el-option v-for="a in ACTION_TYPES" :key="a" :label="a" :value="a" />
+            <el-select
+              v-model="action"
+              style="width: 100%"
+              filterable
+              allow-create
+              default-first-option
+              placeholder="选择或输入自定义动作"
+            >
+              <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
             </el-select>
           </el-form-item>
         </template>
