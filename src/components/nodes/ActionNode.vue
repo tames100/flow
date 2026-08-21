@@ -60,9 +60,9 @@ const hasImage = computed(() => !!props.data.image)
 }
 
 .action-img {
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
   border-radius: 8px;
   background: #fff;
 }

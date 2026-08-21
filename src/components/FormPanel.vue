@@ -12,7 +12,7 @@ const { allActions } = useActionTypes()
 const emit = defineEmits<{ submitted: [] }>()
 
 const form = reactive<RecipeForm>({
-  inputs: [{ name: '', image: '' }],
+  inputs: [{ name: '', image: '', quantity: 1 }],
   action: '合成',
   actionImage: '',
   output: { name: '', image: '' },
@@ -68,7 +68,7 @@ onMounted(() => window.addEventListener('paste', onPaste))
 onBeforeUnmount(() => window.removeEventListener('paste', onPaste))
 
 function addInputRow() {
-  form.inputs.push({ name: '', image: '' })
+  form.inputs.push({ name: '', image: '', quantity: 1 })
 }
 
 function removeInputRow(idx: number) {
@@ -160,7 +160,10 @@ function submit() {
             </span>
           </el-option>
         </el-select>
-        <el-input v-model="inp.name" placeholder="或手动输入物品名称" clearable @focus="pasteTarget = idx" />
+        <div class="name-quantity">
+          <el-input v-model="inp.name" placeholder="或手动输入物品名称" clearable @focus="pasteTarget = idx" />
+          <el-input-number v-model="inp.quantity" :min="1" :max="9999" size="small" controls-position="right" class="qty-input" />
+        </div>
         <div class="row-actions">
           <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
           <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
@@ -240,6 +243,15 @@ function submit() {
   font-weight: 600;
   color: #606266;
   margin-bottom: 6px;
+}
+.name-quantity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.qty-input {
+  width: 110px;
+  flex-shrink: 0;
 }
 .input-row {
   display: flex;

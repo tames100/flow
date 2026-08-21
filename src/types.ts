@@ -14,6 +14,8 @@ export interface ItemNodeData {
   image: string
   /** 显示模式：仅图片 / 图片+文字 */
   showLabel: boolean
+  /** 数量（如需要多份原料） */
+  quantity: number
 }
 
 /** 加工动作节点数据 */
@@ -32,7 +34,7 @@ export type RecipeEdge = Edge
 
 /** 表单录入：一条配方 */
 export interface RecipeForm {
-  inputs: { name: string; image?: string; /** 若来自已有产物节点，记录其节点 id */ refId?: string }[]
+  inputs: { name: string; image?: string; quantity?: number; /** 若来自已有产物节点，记录其节点 id */ refId?: string }[]
   action: string
   /** 加工动作图标图片 */
   actionImage?: string

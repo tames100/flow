@@ -61,12 +61,13 @@ export function useRecipeGraph() {
     image = '',
     position = { x: 0, y: 0 },
     showLabel = true,
+    quantity = 1,
   ): RecipeNode {
     return {
       id: genId('item'),
       type: 'item',
       position,
-      data: { kind: 'item', label, image, showLabel },
+      data: { kind: 'item', label, image, showLabel, quantity: quantity || 1 },
     }
   }
 
@@ -96,7 +97,7 @@ export function useRecipeGraph() {
       createItemNode(inp.name, inp.image ?? '', {
         x: baseX,
         y: baseY + i * 90,
-      }),
+      }, true, inp.quantity ?? 1),
     )
 
     const actionNode = createActionNode(
