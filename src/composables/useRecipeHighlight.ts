@@ -66,14 +66,14 @@ export function useRecipeHighlight() {
         class: highlighted ? 'highlighted' : 'dimmed',
         // 防止置灰节点拦截点击
         selectable: true,
-      })
+      } as any)
     })
     getEdges.value.forEach((e: RecipeEdge) => {
       const highlighted = edgeIds.has(e.id)
-      updateEdge(e.id, {
+      updateEdge(e as any, {
         class: highlighted ? 'recipe-edge highlighted' : 'recipe-edge dimmed',
         animated: highlighted,
-      })
+      } as any)
     })
   }
 
@@ -82,10 +82,10 @@ export function useRecipeHighlight() {
     activeNodeId.value = null
     isHighlighting.value = false
     getNodes.value.forEach((n: RecipeNode) => {
-      updateNode(n.id, { class: '' })
+      updateNode(n.id, { class: '' } as any)
     })
     getEdges.value.forEach((e: RecipeEdge) => {
-      updateEdge(e.id, { class: 'recipe-edge', animated: false })
+      updateEdge(e as any, { class: 'recipe-edge', animated: false } as any)
     })
   }
 

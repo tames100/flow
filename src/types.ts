@@ -1,9 +1,7 @@
 import type { Node, Edge } from '@vue-flow/core'
 
-/** 加工动作类型 */
-export type ActionType = '合成' | '搅拌' | '切割' | '熔炼'
-
-export const ACTION_TYPES: ActionType[] = ['合成', '搅拌', '切割', '熔炼']
+/** 内置加工动作（默认值，用户可在此基础上自定义扩展） */
+export const DEFAULT_ACTIONS: string[] = ['合成', '搅拌', '切割', '熔炼']
 
 /** 节点种类 */
 export type NodeKind = 'item' | 'action'
@@ -21,8 +19,8 @@ export interface ItemNodeData {
 /** 加工动作节点数据 */
 export interface ActionNodeData {
   kind: 'action'
-  label: ActionType
-  action: ActionType
+  label: string
+  action: string
 }
 
 export type RecipeNodeData = ItemNodeData | ActionNodeData
@@ -33,13 +31,15 @@ export type RecipeEdge = Edge
 /** 表单录入：一条配方 */
 export interface RecipeForm {
   inputs: { name: string; image?: string }[]
-  action: ActionType
+  action: string
   output: { name: string; image?: string }
 }
 
 /** 导出 / 导入 的 JSON 结构 */
 export interface RecipeGraphData {
   version: string
+  /** 自定义加工动作列表（与内置动作合并后作为可选动作） */
+  actions: string[]
   nodes: RecipeNode[]
   edges: RecipeEdge[]
 }

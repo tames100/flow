@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Handle, Position, useVueFlow } from '@vue-flow/core'
+import { Handle, Position } from '@vue-flow/core'
 import type { ItemNodeData } from '../../types'
 
 const props = defineProps<{
   id: string
   data: ItemNodeData
 }>()
-
-const { onNodeClick } = useVueFlow()
-
-const emitHighlight = () => {
-  // 通过全局事件触发高亮（由 App 中 onNodeClick 统一处理）
-}
 
 const hasImage = computed(() => !!props.data.image)
 const displayName = computed(() => props.data.label || '未命名物品')
@@ -22,7 +16,6 @@ const displayName = computed(() => props.data.label || '未命名物品')
   <div
     class="item-node"
     :class="{ 'no-label': !data.showLabel }"
-    @click="emitHighlight"
   >
     <!-- 输入连接点（物品作为原料时位于左侧） -->
     <Handle type="target" :position="Position.Left" :connectable="true" />

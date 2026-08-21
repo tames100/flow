@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type {
-  ActionType,
   RecipeEdge,
   RecipeForm,
   RecipeGraphData,
@@ -10,14 +9,13 @@ import type {
 } from '../types'
 
 let nodeSeq = 1
-let edgeSeq = 1
 
 function genId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${nodeSeq++}`
 }
 
-const nodes = ref<RecipeNode[]>([])
-const edges = ref<RecipeEdge[]>([])
+const nodes = ref<any[]>([])
+const edges = ref<any[]>([])
 
 export function useRecipeGraph() {
   const { addNodes, addEdges, removeNodes, removeEdges, setNodes, setEdges, findNode } =
@@ -90,12 +88,12 @@ export function useRecipeGraph() {
       },
     ]
 
-    addNodes(newNodes)
-    addEdges(newEdges)
+    addNodes(newNodes as any)
+    addEdges(newEdges as any)
 
     // 同步本地 ref
-    nodes.value = [...nodes.value, ...newNodes]
-    edges.value = [...edges.value, ...newEdges]
+    nodes.value = [...nodes.value, ...(newNodes as any[])] as RecipeNode[]
+    edges.value = [...edges.value, ...(newEdges as any[])] as RecipeEdge[]
 
     return { inputNodes, actionNode, outputNode }
   }
@@ -117,10 +115,9 @@ export function useRecipeGraph() {
       ...node,
       id: genId(node.type === 'item' ? 'item' : 'action'),
       position: { x: node.position.x + 40, y: node.position.y + 40 },
-      selected: false,
       data: JSON.parse(JSON.stringify(node.data)) as RecipeNodeData,
-    }
-    addNodes([copy])
+    } as RecipeNode
+    addNodes([copy] as any)
     nodes.value = [...nodes.value, copy]
     return copy
   }
@@ -193,7 +190,6 @@ export function useRecipeGraph() {
     setEdges(data.edges)
     nodes.value = JSON.parse(JSON.stringify(data.nodes))
     edges.value = JSON.parse(JSON.stringify(data.edges))
-    edgeSeq = edges.value.length + 1
   }
 
   return {

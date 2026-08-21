@@ -8,7 +8,7 @@ const props = defineProps<{
   data: ActionNodeData
 }>()
 
-const iconMap: Record<ActionNodeData['action'], string> = {
+const iconMap: Record<string, string> = {
   合成: '⚗️',
   搅拌: '🥄',
   切割: '🔪',
