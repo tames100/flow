@@ -27,7 +27,7 @@ import {
   type RecipeGraphData,
 } from './composables'
 
-const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode } =
+const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStart, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode, updateNode, getNodes } =
   useVueFlow()
 const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel } =
   useRecipeGraph()
@@ -90,8 +90,41 @@ onBeforeUnmount(() => {
   if (autoSaveTimer) window.clearInterval(autoSaveTimer)
 })
 
-// 拖拽节点结束后自动保存位置
-onNodeDragStop(() => persist())
+// ---- Ctrl + 左键拖动节点 = 复制节点 ----
+// 按住 Ctrl/⌘ 拖动节点：松手后在拖动终点生成副本（复制除 id 外的所有值，id 重新生成），
+// 原节点（及同组选中节点）还原到拖动前位置。
+const dragCopyInfo = ref<{ id: string; startPos: { x: number; y: number }; group: Map<string, { x: number; y: number }> } | null>(null)
+
+onNodeDragStart(({ node, event }) => {
+  if (!('ctrlKey' in event)) return
+  const e = event as MouseEvent
+  if (!e.ctrlKey && !e.metaKey) return
+  // 记录被拖节点与同组选中节点的起始位置，拖动结束后整体还原
+  const group = new Map<string, { x: number; y: number }>()
+  getNodes.value.forEach((n) => {
+    if (n.selected) group.set(n.id, { x: n.position.x, y: n.position.y })
+  })
+  group.set(node.id, { x: node.position.x, y: node.position.y })
+  dragCopyInfo.value = { id: node.id, startPos: { ...node.position }, group }
+})
+
+onNodeDragStop(({ node }) => {
+  const info = dragCopyInfo.value
+  dragCopyInfo.value = null
+  if (!info || info.id !== node.id) {
+    // 普通拖拽：自动保存最新位置
+    persist()
+    return
+  }
+  const moved = Math.abs(node.position.x - info.startPos.x) + Math.abs(node.position.y - info.startPos.y)
+  if (moved >= 10) {
+    // 确为拖动：在拖动终点生成副本（完整复制，新 id）
+    duplicateNode(node.id, { x: node.position.x, y: node.position.y })
+  }
+  // 原节点（及同组节点）还原到拖动前位置
+  info.group.forEach((pos, id) => updateNode(id, { position: { ...pos } }))
+  persist()
+})
 
 // 点击画布空白处：取消选中与文本选区
 onPaneClick(() => {
@@ -296,6 +329,7 @@ const shortcutsList = [
   { keys: '滚轮', desc: '缩放画布' },
   { keys: '点击节点', desc: '选中并在属性面板编辑，高亮其上游配方链' },
   { keys: '点击连线', desc: '编辑连线数量与样式（线型 / 颜色 / 动画 / 端点）' },
+  { keys: 'Ctrl + 左键拖动节点', desc: '复制节点（生成新 ID，完整保留全部属性）' },
   { keys: 'Ctrl + 左键拖动', desc: '框选多个节点' },
   { keys: '点击空白', desc: '取消选中 / 取消高亮' },
   { keys: '右键画布', desc: '打开菜单：创建物品/加工动作节点' },

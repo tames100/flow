@@ -366,16 +366,29 @@ export function useRecipeGraph() {
     persist()
   }
 
-  /** 复制节点（仅复制物品/动作节点本身，不复制连线） */
-  function duplicateNode(id: string) {
+  /**
+   * 复制节点（仅复制物品/动作节点本身，不复制连线）。
+   * 复制除 id 外的所有字段（type / position / data / class / style 等），id 重新生成；
+   * 可通过 position 指定副本位置（默认在原节点右下偏移 40px，供 Ctrl+C/V 粘贴使用）。
+   */
+  function duplicateNode(id: string, position?: { x: number; y: number }) {
     const node = findNode(id)
     if (!node) return
     const copy: RecipeNode = {
       ...node,
       id: genId(node.type === 'item' ? 'item' : 'action'),
-      position: { x: node.position.x + 40, y: node.position.y + 40 },
+      position: position ?? { x: node.position.x + 40, y: node.position.y + 40 },
       data: JSON.parse(JSON.stringify(node.data)) as RecipeNodeData,
     } as RecipeNode
+    // 清理 Vue Flow 运行时字段，避免副本携带脏状态（选中 / 拖拽中 / 内部缓存）
+    const c = copy as any
+    delete c.selected
+    delete c.dragging
+    delete c.positionAbsolute
+    delete c.computedPosition
+    delete c.handleBounds
+    delete c.dimensions
+    delete c.events
     addNodes([copy] as any)
     nodes.value = [...nodes.value, copy]
     persist()
