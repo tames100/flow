@@ -165,6 +165,7 @@ export function useRecipeGraph() {
     position = { x: 0, y: 0 },
     image = '',
     description = '',
+    extra = '',
     outputUnit = DEFAULT_UNIT,
   ): RecipeNode {
     return {
@@ -177,6 +178,7 @@ export function useRecipeGraph() {
         action,
         image,
         description: description || undefined,
+        extra: extra || undefined,
         outputUnit: outputUnit || DEFAULT_UNIT,
       },
     }
@@ -290,7 +292,11 @@ export function useRecipeGraph() {
     let actionNode: any = null
     if (form.actionRefId && form.reuseActionImage) {
       const existing = findNode(form.actionRefId)
-      if (existing) actionNode = existing
+      if (existing) {
+        actionNode = existing
+        // 复用已有节点时，同步表单中的附加操作（未填写则保留原值）
+        if (form.actionExtra) Object.assign((existing.data as any), { extra: form.actionExtra })
+      }
     }
     if (!actionNode) {
       actionNode = createActionNode(
@@ -298,6 +304,7 @@ export function useRecipeGraph() {
         { x: baseX + 220, y: actionY },
         form.actionImage ?? '',
         form.actionDescription,
+        form.actionExtra,
         form.actionOutputUnit,
       )
       createdNodes.push(actionNode)
@@ -500,7 +507,10 @@ export function useRecipeGraph() {
    * 配方追踪：计算「要产出 targetQty 个目标产物」时，各基本原料的需求量。
    * 基本原料 = 不通过任何加工节点生成（没有任何 action→item 输入边）的源头物品节点。
    * 沿上游按「item → action → item」反向传播，加工节点的输入 / 输出数量取自各连线 label（×N）。
-   * 图中存在环时，环上节点的需求传播会截断，但不会死循环。
+   * 采用不动点迭代自目标向上逐层传播需求，直至收敛：
+   *  - 某产物被多个加工节点（多条配方）生产时，按单次产量从大到小贪心分配需求，避免重复放大；
+   *  - 某加工节点被多个下游共享时，执行次数取各下游需求的最大值（一次产出同时满足所有输出）；
+   *  - 图中存在环时由迭代次数上限截断，不会死循环。
    */
   function computeBasicMaterials(targetId: string, targetQty: number): MaterialDemand[] {
     const qty = Math.max(1, Math.floor(targetQty || 1))
@@ -528,47 +538,53 @@ export function useRecipeGraph() {
       }
     }
 
-    const demand = new Map<string, number>() // item 需求量
-    const demandUnit = new Map<string, string>() // item -> 单位（取自输入连线）
-    demand.set(targetId, qty)
-
-    // DFS 后序收集上游 item（含 target），order 中上游在前
-    const visited = new Set<string>()
-    const order: string[] = []
-    const dfs = (itemId: string) => {
-      if (visited.has(itemId)) return
-      visited.add(itemId)
-      for (const edge of itemIn.get(itemId) ?? []) {
-        for (const ae of actionIn.get(edge.source) ?? []) dfs(ae.source)
-      }
-      order.push(itemId)
-    }
-    dfs(targetId)
-
-    // 第一遍（下游 → 上游）：计算每个加工节点的总生产次数（共享时取最大值）
-    const timesMap = new Map<string, number>()
-    for (const itemId of [...order].reverse()) {
-      const d = demand.get(itemId) ?? 0
-      for (const edge of itemIn.get(itemId) ?? []) {
-        const actId = edge.source
-        const outQty = qtyFromLabel(edge.label)
-        const t = Math.ceil(d / outQty)
-        timesMap.set(actId, Math.max(timesMap.get(actId) ?? 0, t))
-      }
-    }
-
-    // 第二遍：按生产次数累加上游原料需求
-    for (const itemId of [...order].reverse()) {
-      for (const edge of itemIn.get(itemId) ?? []) {
-        const actId = edge.source
-        const t = timesMap.get(actId) ?? 0
-        for (const ae of actionIn.get(actId) ?? []) {
-          const need = t * qtyFromLabel(ae.label)
-          demand.set(ae.source, (demand.get(ae.source) ?? 0) + need)
-          const u = unitFromLabel(ae.label)
-          if (u && !demandUnit.has(ae.source)) demandUnit.set(ae.source, u)
+    // 不动点迭代：每轮由当前需求计算各加工节点执行次数，再按次数累加上游原料需求，直至收敛
+    let demand = new Map<string, number>([[targetId, qty]])
+    const maxIter = nodeMap.size + 5 // 图中存在环时截断，防止无限循环
+    for (let iter = 0; iter < maxIter; iter++) {
+      // 第一遍：由各物品的需求计算其生产加工节点需要执行的次数
+      const times = new Map<string, number>()
+      for (const [itemId, d] of demand) {
+        if (d <= 0) continue
+        const prods = itemIn.get(itemId) ?? []
+        if (prods.length === 0) continue // 基本原料：没有生产者
+        // 多个加工节点（多条配方）生产同一物品时：按单次产量从大到小贪心分配需求
+        const sorted = [...prods].sort((a, b) => qtyFromLabel(b.label) - qtyFromLabel(a.label))
+        let remaining = d
+        for (const edge of sorted) {
+          if (remaining <= 0) break
+          const outQty = qtyFromLabel(edge.label)
+          const t = Math.ceil(remaining / outQty)
+          // 同一加工节点被多个下游共享时取最大执行次数（一次产出同时满足所有输出）
+          times.set(edge.source, Math.max(times.get(edge.source) ?? 0, t))
+          remaining -= t * outQty
         }
       }
+      // 第二遍：按执行次数累加上游原料需求
+      const nextDemand = new Map<string, number>()
+      for (const [actId, t] of times) {
+        for (const ae of actionIn.get(actId) ?? []) {
+          const need = t * qtyFromLabel(ae.label)
+          nextDemand.set(ae.source, (nextDemand.get(ae.source) ?? 0) + need)
+        }
+      }
+      nextDemand.set(targetId, qty) // 目标产物的需求量恒定
+
+      // 收敛判断：本轮与上一轮需求一致则停止
+      const stable =
+        demand.size === nextDemand.size &&
+        [...demand].every(([k, v]) => nextDemand.get(k) === v)
+      demand = nextDemand
+      if (stable) break
+    }
+
+    // 基本原料作为加工输入的连线单位（如 ×3 ml → 'ml'）
+    const demandUnit = new Map<string, string>()
+    for (const ae of allEdges) {
+      const src = nodeMap.get(ae.source)
+      if (!src || src.data?.kind !== 'item') continue
+      const u = unitFromLabel(ae.label)
+      if (u && !demandUnit.has(ae.source)) demandUnit.set(ae.source, u)
     }
 
     // 仅保留基本原料（无 action → item 输入边）
@@ -609,6 +625,7 @@ export function useRecipeGraph() {
         action: (n.data as any).action ?? '',
         image: (n.data as any).image ?? '',
         outputUnit: (n.data as any)?.outputUnit || DEFAULT_UNIT,
+        extra: (n.data as any)?.extra ?? '',
       }))
   }
 
