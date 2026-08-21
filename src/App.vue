@@ -51,12 +51,12 @@ let autoSaveTimer: number | undefined
 
 // 自动保存间隔（秒），可在顶部工具栏调整，设置持久化到 localStorage
 const autoSaveInterval = ref(10)
-;(() => {
-  const saved = Number(localStorage.getItem(AUTO_SAVE_KEY))
-  if (Number.isFinite(saved) && saved >= 1 && saved <= 3600) {
-    autoSaveInterval.value = saved
-  }
-})()
+  ; (() => {
+    const saved = Number(localStorage.getItem(AUTO_SAVE_KEY))
+    if (Number.isFinite(saved) && saved >= 1 && saved <= 3600) {
+      autoSaveInterval.value = saved
+    }
+  })()
 
 /** 按当前设置的间隔（秒）启动自动保存定时器 */
 function startAutoSaveTimer() {
@@ -219,7 +219,7 @@ function onImportChange(e: Event) {
     }
   }
   reader.readAsText(file)
-  ;(e.target as HTMLInputElement).value = ''
+    ; (e.target as HTMLInputElement).value = ''
 }
 
 function onReset() {
@@ -232,7 +232,7 @@ function onReset() {
       selectedNodeId.value = null
       selectedEdgeId.value = null
     })
-    .catch(() => {})
+    .catch(() => { })
 }
 
 // ---- 画布右键菜单 ----
@@ -321,15 +321,8 @@ const shortcutsList = [
         <el-button size="small" type="danger" plain @click="onReset">清空</el-button>
         <div class="auto-save-set" title="设置自动保存间隔">
           <span class="auto-save-label">自动保存</span>
-          <el-input-number
-            v-model="autoSaveInterval"
-            :min="1"
-            :max="3600"
-            :step="5"
-            size="small"
-            controls-position="right"
-            style="width: 100px"
-          />
+          <el-input-number v-model="autoSaveInterval" :min="1" :max="3600" :step="5" size="small"
+            controls-position="right" style="width: 100px" />
           <span class="auto-save-unit">s</span>
         </div>
         <el-button size="small" @click="shortcutsVisible = true">⌨ 快捷键说明</el-button>
@@ -339,17 +332,9 @@ const shortcutsList = [
 
     <!-- 画布区 -->
     <main class="center" @contextmenu="onCanvasContextMenu">
-      <VueFlow
-        :node-types="nodeTypes"
-        :default-viewport="{ zoom: 0.9 }"
-        :min-zoom="0.2"
-        :max-zoom="2.5"
-        fit-view-on-init
-        :selection-key-code="'Control'"
-        :multi-selection-key-code="'Control'"
-        :selection-on-drag="false"
-        :pan-on-drag="[0]"
-      >
+      <VueFlow :node-types="nodeTypes" :default-viewport="{ zoom: 0.9 }" :min-zoom="0.2" :max-zoom="2.5"
+        fit-view-on-init :selection-key-code="'Control'" :multi-selection-key-code="'Control'"
+        :selection-on-drag="false" :pan-on-drag="[0]">
         <Background :gap="16" pattern-color="#dcdfe6" />
         <Controls />
         <div class="zoom-indicator">{{ Math.round(viewport.zoom * 100) }}%</div>
@@ -375,13 +360,8 @@ const shortcutsList = [
     <ImageCropDialog />
 
     <!-- 自定义右键菜单 -->
-    <ContextMenu
-      @create-item="onCtxCreateItem"
-      @create-action="onCtxCreateAction"
-      @edit="onCtxEdit"
-      @duplicate="onCtxDuplicate"
-      @remove="onCtxRemove"
-    />
+    <ContextMenu @create-item="onCtxCreateItem" @create-action="onCtxCreateAction" @edit="onCtxEdit"
+      @duplicate="onCtxDuplicate" @remove="onCtxRemove" />
 
     <!-- 快捷键说明弹窗 -->
     <el-dialog v-model="shortcutsVisible" title="快捷键说明" width="440px" append-to-body>
@@ -396,14 +376,8 @@ const shortcutsList = [
     </el-dialog>
 
     <!-- 配方录入弹窗 -->
-    <el-dialog
-      v-model="formDialogVisible"
-      title="配方录入"
-      width="460px"
-      class="recipe-dialog"
-      :close-on-click-modal="false"
-      append-to-body
-    >
+    <el-dialog v-model="formDialogVisible" title="配方录入" width="460px" top="40px" class="recipe-dialog"
+      :close-on-click-modal="false" append-to-body>
       <FormPanel @submitted="formDialogVisible = false" />
     </el-dialog>
   </div>
@@ -415,6 +389,7 @@ const shortcutsList = [
   flex-direction: column;
   height: 100%;
 }
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -423,15 +398,18 @@ const shortcutsList = [
   background: #1f2933;
   color: #fff;
 }
+
 .brand {
   font-weight: 700;
   font-size: 16px;
 }
+
 .tool-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 .auto-save-set {
   display: flex;
   align-items: center;
@@ -440,20 +418,24 @@ const shortcutsList = [
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 6px;
 }
+
 .auto-save-label {
   font-size: 12px;
   color: #dcdfe6;
   white-space: nowrap;
 }
+
 .auto-save-unit {
   font-size: 12px;
   color: #dcdfe6;
 }
+
 .center {
   flex: 1;
   position: relative;
   min-width: 0;
 }
+
 .hint {
   position: absolute;
   bottom: 12px;
@@ -466,6 +448,7 @@ const shortcutsList = [
   pointer-events: none;
   max-width: 60%;
 }
+
 .zoom-indicator {
   position: absolute;
   bottom: 12px;
@@ -481,6 +464,7 @@ const shortcutsList = [
   pointer-events: none;
   user-select: none;
 }
+
 /* 画布内悬浮属性面板 */
 .float-panel {
   position: absolute;
@@ -497,6 +481,7 @@ const shortcutsList = [
   flex-direction: column;
   overflow: hidden;
 }
+
 .float-head {
   display: flex;
   align-items: center;
@@ -508,11 +493,13 @@ const shortcutsList = [
   background: #fafafa;
   user-select: none;
 }
+
 .float-panel :deep(.prop-panel) {
   padding: 12px;
   height: auto;
   overflow-y: auto;
 }
+
 .kbd {
   font-family: ui-monospace, Menlo, Consolas, monospace;
   background: #f4f4f5;
@@ -522,9 +509,10 @@ const shortcutsList = [
   font-size: 12px;
   white-space: nowrap;
 }
-/* 配方录入弹窗：限制弹窗高度，保证视口内完整显示全部内容（文本域内部自行滚动） */
+
+/* 配方录入弹窗：顶部与工具栏底部对齐（top 通过 prop 传入，内联变量优先级高于 class），限制弹窗高度保证视口内完整显示全部内容 */
 .recipe-dialog :deep(.el-dialog__body) {
-  max-height: calc(100vh - 160px);
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
 }
 </style>
