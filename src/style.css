@@ -16,6 +16,20 @@ body,
   width: 100%;
 }
 
+/* 修复 Windows 下浏览器对 cursor: grab / grabbing 渲染失败（光标消失）的问题。
+   grab / grabbing 属于浏览器自绘光标，在本机 GPU/系统环境下会渲染成透明；
+   move 与 default 是系统原生光标，由系统直接渲染，不会失败。
+   注意：style.css 在 main.ts 中先于 VueFlow 样式加载，同特异性规则会被库样式覆盖，
+   因此这里必须用更高特异性 + !important 强制生效。
+   画布空白处：系统默认箭头；左键按下拖动画布：系统四向移动光标 */
+.vue-flow__pane.vue-flow__pane.draggable {
+  cursor: default !important;
+}
+
+.vue-flow__pane.vue-flow__pane.dragging {
+  cursor: move !important;
+}
+
 /* Vue Flow 高亮 / 置灰 通用类 */
 .vue-flow__node.dimmed {
   opacity: 0.25;
