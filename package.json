@@ -15,6 +15,7 @@
     "@vue-flow/minimap": "^1.5.0",
     "cropperjs": "1.6.2",
     "element-plus": "^2.8.8",
+    "v-flow-recipe-editor": "link:",
     "vue": "^3.5.40"
   },
   "devDependencies": {
