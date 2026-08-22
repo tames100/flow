@@ -385,15 +385,17 @@ export function useRecipeGraph() {
     if (form.actionRefId && form.reuseActionImage) {
       const existing = findNode(form.actionRefId);
       if (existing) {
-        actionNode = existing;
-        // 复用已有节点时，同步表单中的附加操作（未填写则保留原值）
-        if (form.actionExtra)
-          Object.assign(existing.data as any, { extra: form.actionExtra });
-        // 同步表单中的分组归属（加工节点仅保留归属，不继承分组属性）
-        if (form.actionGroupIds)
-          Object.assign(existing.data as any, {
-            groupIds: form.actionGroupIds,
-          });
+        // 复制加工节点到新配方链（新 id，相同数据），而不是链接到原节点
+        const copyData = JSON.parse(JSON.stringify(existing.data));
+        if (form.actionExtra) copyData.extra = form.actionExtra;
+        if (form.actionGroupIds) copyData.groupIds = form.actionGroupIds;
+        actionNode = {
+          id: genId("action"),
+          type: "action",
+          position: { x: baseX + 220, y: actionY },
+          data: copyData,
+        };
+        createdNodes.push(actionNode);
       }
     }
     if (!actionNode) {
@@ -1026,6 +1028,20 @@ export function useRecipeGraph() {
     return { name: attrName, targetAttr, items, total };
   }
 
+  /** 收集画布上正在使用的所有单位（从连线 unit + 加工节点 outputUnit） */
+  function getCanvasUnits(): string[] {
+    const set = new Set<string>();
+    getEdges.value.forEach((e: any) => {
+      const u = e?.unit;
+      if (u) set.add(u);
+    });
+    getNodes.value.forEach((n: any) => {
+      const u = n?.data?.outputUnit;
+      if (u) set.add(u);
+    });
+    return [...set];
+  }
+
   return {
     nodes,
     edges,
@@ -1047,6 +1063,7 @@ export function useRecipeGraph() {
     refreshEdgeUnits,
     getItemNodes,
     getActionNodes,
+    getCanvasUnits,
     parseSourceRecipe,
     importSourceRecipes,
     getTraceAttributeNames,

@@ -10,6 +10,7 @@ export * from "./useCanvasShortcuts";
 export * from "./useContextMenu";
 export * from "./useActionTypes";
 export * from "./useGroups";
+export * from "./useUnits";
 export * from "./useImageUpload";
 export * from "./useImagePreview";
 export * from "./useImageCrop";

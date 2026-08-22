@@ -5,6 +5,7 @@ import {
   useRecipeGraph,
   useActionTypes,
   useGroups,
+  useUnits,
   useImagePreview,
   useImageCrop,
   fileToDataURL,
@@ -13,7 +14,7 @@ import {
   type ItemAttribute,
   type AttributeTraceResult,
 } from '../composables'
-import { DEFAULT_EXTRAS, DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
+import { DEFAULT_EXTRAS, DEFAULT_UNIT } from '../types'
 
 const { findNode, updateNode, getNodes, getEdges, removeEdges } = useVueFlow()
 const {
@@ -25,9 +26,11 @@ const {
   getTraceAttributeNames,
   resolveUnit,
   syncUnitFromAction,
+  getCanvasUnits,
 } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 const { allGroups } = useGroups()
+const { allUnits, addUnit, removeUnit } = useUnits()
 const { openImage } = useImagePreview()
 const { open: openCrop } = useImageCrop()
 
@@ -235,14 +238,19 @@ function unitOf(e: any): string {
   return (e as any)?.unit ?? ''
 }
 
-/** 收集「目前已有的单位」：内置默认单位 + 画布上所有连线使用过的单位 */
+/** 可选单位：内置 + 自定义 + 画布使用中 - 隐藏（「个」始终保留） */
 function getUnitOptions(): string[] {
-  const set = new Set<string>(DEFAULT_UNITS)
-  getEdges.value.forEach((e: any) => {
-    const u = e?.unit
-    if (u) set.add(u)
-  })
-  return [...set]
+  return allUnits(getCanvasUnits())
+}
+
+/** 用户选择/输入单位后，若为新值则持久化 */
+function onUnitPick(v: string) {
+  if (v) addUnit(v)
+}
+
+/** 删除单位（「个」不可删；画布正在使用的不允许删） */
+function onRemoveUnit(u: string) {
+  removeUnit(u, getCanvasUnits())
 }
 
 function nodeName(id: string) {
@@ -580,8 +588,13 @@ watch(edgeId, (v) => emit('update:edge', v))
           <div class="qty-unit-row">
             <el-input-number v-model="edgeQty" :min="1" :max="9999" controls-position="right" style="flex: 1" />
             <el-select v-model="edgeUnit" placeholder="单位" clearable filterable allow-create default-first-option
-              style="width: 96px">
-              <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
+              style="width: 96px" @change="onUnitPick">
+              <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u">
+                <div class="unit-option">
+                  <span>{{ u }}</span>
+                  <span v-if="u !== '个'" class="unit-del" @click.stop="onRemoveUnit(u)">×</span>
+                </div>
+              </el-option>
             </el-select>
           </div>
         </el-form-item>
@@ -751,8 +764,13 @@ watch(edgeId, (v) => emit('update:edge', v))
                 size="small" style="width: 96px" @update:model-value="onQtyInput(e, $event)" />
               <el-select :model-value="unitOf(e) || resolveUnit(e.source, e.target)" placeholder="单位" clearable
                 filterable allow-create default-first-option size="small" style="width: 76px"
-                @update:model-value="onUnitInput(e, $event)">
-                <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
+                @update:model-value="onUnitInput(e, $event)" @change="onUnitPick">
+                <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u">
+                  <div class="unit-option">
+                    <span>{{ u }}</span>
+                    <span v-if="u !== '个'" class="unit-del" @click.stop="onRemoveUnit(u)">×</span>
+                  </div>
+                </el-option>
               </el-select>
             </div>
             <div class="qty-tip">指向本加工节点的连线均为输入，单位默认继承上游加工节点的输出单位</div>
@@ -764,8 +782,13 @@ watch(edgeId, (v) => emit('update:edge', v))
                 size="small" style="width: 96px" @update:model-value="onQtyInput(e, $event)" />
               <el-select :model-value="unitOf(e) || resolveUnit(e.source, e.target)" placeholder="单位" clearable
                 filterable allow-create default-first-option size="small" style="width: 76px"
-                @update:model-value="onUnitInput(e, $event)">
-                <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
+                @update:model-value="onUnitInput(e, $event)" @change="onUnitPick">
+                <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u">
+                  <div class="unit-option">
+                    <span>{{ u }}</span>
+                    <span v-if="u !== '个'" class="unit-del" @click.stop="onRemoveUnit(u)">×</span>
+                  </div>
+                </el-option>
               </el-select>
             </div>
             <div class="qty-tip">本加工节点指出的连线均为输出，单位与「输出单位」一致</div>
@@ -784,8 +807,13 @@ watch(edgeId, (v) => emit('update:edge', v))
           </el-form-item>
           <el-form-item label="输出单位（下游输入自动继承）">
             <el-select v-model="outputUnit" style="width: 100%" filterable allow-create default-first-option
-              placeholder="选择或输入单位">
-              <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u" />
+              placeholder="选择或输入单位" @change="onUnitPick">
+              <el-option v-for="u in getUnitOptions()" :key="u" :label="u" :value="u">
+                <div class="unit-option">
+                  <span>{{ u }}</span>
+                  <span v-if="u !== '个'" class="unit-del" @click.stop="onRemoveUnit(u)">×</span>
+                </div>
+              </el-option>
             </el-select>
           </el-form-item>
           <el-form-item label="动作图标">
@@ -830,6 +858,25 @@ watch(edgeId, (v) => emit('update:edge', v))
   color: #909399;
   margin-top: 4px;
   line-height: 1.2;
+}
+
+.unit-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.unit-del {
+  color: #f56c6c;
+  font-size: 14px;
+  margin-left: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.unit-del:hover {
+  color: #d9362e;
 }
 
 .qty-unit-row {

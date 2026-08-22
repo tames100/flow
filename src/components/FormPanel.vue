@@ -4,6 +4,7 @@ import {
   useRecipeGraph,
   useActionTypes,
   useGroups,
+  useUnits,
   useImageUpload,
   useImageCrop,
   fileToDataURL,
@@ -12,11 +13,12 @@ import {
   type ItemAttribute,
   type RecipeForm,
 } from '../composables'
-import { DEFAULT_EXTRAS, DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
+import { DEFAULT_EXTRAS, DEFAULT_UNIT } from '../types'
 
-const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes } = useRecipeGraph()
+const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes, getCanvasUnits } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 const { allGroups } = useGroups()
+const { allUnits, addUnit, removeUnit } = useUnits()
 const { open: openCrop } = useImageCrop()
 
 const emit = defineEmits<{ submitted: [] }>()
@@ -147,6 +149,21 @@ function promptCopyMissingAttrs(
 /** 分组多选下拉所需选项 */
 function groupOptions() {
   return allGroups().map((g) => ({ id: g.id, name: g.name }))
+}
+
+/** 可选单位列表：内置 + 自定义 + 画布使用中 - 隐藏（「个」始终保留） */
+function unitOptions(): string[] {
+  return allUnits(getCanvasUnits())
+}
+
+/** 用户选择/输入单位后，若为新值则持久化 */
+function onUnitPick(v: string) {
+  if (v) addUnit(v)
+}
+
+/** 删除单位（「个」不可删；画布正在使用的不允许删） */
+function onRemoveUnit(u: string) {
+  removeUnit(u, getCanvasUnits())
 }
 
 function addInputAttr(idx: number) {
@@ -480,8 +497,13 @@ function submit() {
               <el-input-number v-model="inp.quantity" :min="1" :max="9999" size="small" controls-position="right"
                 class="qty-input" />
               <el-select v-model="inp.unit" filterable allow-create default-first-option size="small"
-                class="unit-select" placeholder="单位">
-                <el-option v-for="u in DEFAULT_UNITS" :key="u" :label="u" :value="u" />
+                class="unit-select" placeholder="单位" @change="onUnitPick">
+                <el-option v-for="u in unitOptions()" :key="u" :label="u" :value="u">
+                  <div class="unit-option">
+                    <span>{{ u }}</span>
+                    <span v-if="u !== '个'" class="unit-del" @click.stop="onRemoveUnit(u)">×</span>
+                  </div>
+                </el-option>
               </el-select>
             </div>
             <el-input v-model="inp.description" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }"
@@ -585,8 +607,13 @@ function submit() {
           <div class="name-quantity" style="margin-top: 6px">
             <span class="qty-label">输出单位</span>
             <el-select v-model="form.actionOutputUnit" filterable allow-create default-first-option size="small"
-              style="flex: 1">
-              <el-option v-for="u in DEFAULT_UNITS" :key="u" :label="u" :value="u" />
+              style="flex: 1" @change="onUnitPick">
+              <el-option v-for="u in unitOptions()" :key="u" :label="u" :value="u">
+                <div class="unit-option">
+                  <span>{{ u }}</span>
+                  <span v-if="u !== '个'" class="unit-del" @click.stop="onRemoveUnit(u)">×</span>
+                </div>
+              </el-option>
             </el-select>
           </div>
         </div>
@@ -728,6 +755,25 @@ function submit() {
 .unit-select {
   width: 72px;
   flex-shrink: 0;
+}
+
+.unit-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.unit-del {
+  color: #f56c6c;
+  font-size: 14px;
+  margin-left: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.unit-del:hover {
+  color: #d9362e;
 }
 
 .input-row {
