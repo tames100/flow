@@ -97,6 +97,7 @@ export function useRecipeGraph() {
     setNodes,
     setEdges,
     findNode,
+    updateNode,
     updateEdge,
     getNodes,
     getEdges,
