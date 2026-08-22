@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import {
   useRecipeGraph,
   useActionTypes,
@@ -15,13 +15,16 @@ import {
 } from '../composables'
 import { DEFAULT_EXTRAS, DEFAULT_UNIT } from '../types'
 
-const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes, getCanvasUnits } = useRecipeGraph()
+const { addRecipeFromForm, loadRecipeFromAction, updateRecipeFromForm, detectCycle, getItemNodes, getActionNodes, getCanvasUnits } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 const { allGroups } = useGroups()
 const { allUnits, addUnit, removeUnit } = useUnits()
 const { open: openCrop } = useImageCrop()
 
+const props = defineProps<{ editActionId?: string | null }>()
 const emit = defineEmits<{ submitted: [] }>()
+
+const isEditMode = ref(false)
 
 const form = reactive<RecipeForm>({
   inputs: [{ name: '', image: '', quantity: 1, unit: DEFAULT_UNIT, description: '', attributes: [], groupIds: [] }],
@@ -35,6 +38,41 @@ const form = reactive<RecipeForm>({
   actionGroupIds: [],
   outputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }],
 })
+
+/**
+ * 编辑模式：editActionId 给定 → 反向解析该 action 的输入/输出/连线，预填表单。
+ * 切换到新增模式（id 为空）时仅重置 isEditMode 标志，不动表单（由 submit 完成后重置）。
+ */
+watch(
+  () => props.editActionId,
+  (id) => {
+    if (!id) {
+      isEditMode.value = false
+      return
+    }
+    const loaded = loadRecipeFromAction(id)
+    if (!loaded) {
+      isEditMode.value = false
+      return
+    }
+    isEditMode.value = true
+    form.inputs = loaded.inputs.length
+      ? loaded.inputs
+      : [{ name: '', image: '', quantity: 1, unit: DEFAULT_UNIT, description: '', attributes: [], groupIds: [] }]
+    form.action = loaded.action
+    form.actionImage = loaded.actionImage ?? ''
+    form.actionDescription = loaded.actionDescription ?? ''
+    form.actionExtra = loaded.actionExtra ?? ''
+    form.actionOutputUnit = loaded.actionOutputUnit || DEFAULT_UNIT
+    form.actionRefId = loaded.actionRefId
+    form.reuseActionImage = true
+    form.actionGroupIds = loaded.actionGroupIds ?? []
+    form.outputs = loaded.outputs.length
+      ? loaded.outputs
+      : [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }]
+  },
+  { immediate: true },
+)
 
 /** 属性编辑区展开状态：`in${idx}` / `out${idx}` */
 const attrExpanded = ref<Record<string, boolean>>({})
@@ -419,7 +457,7 @@ function submit() {
       (a) => (a.name ?? '').trim() || String(a.value ?? '').trim(),
     )
 
-  addRecipeFromForm({
+  const payload: RecipeForm = {
     inputs: validInputs.map((i) => ({
       name: i.name.trim(),
       image: i.image,
@@ -447,9 +485,16 @@ function submit() {
       refId: o.refId,
       groupIds: o.groupIds ?? [],
     })),
-  })
+  }
 
-  // 新增后立即检测循环依赖
+  // 编辑模式：复用 action 节点，增量更新连线/物品节点；新增模式：创建新配方
+  if (isEditMode.value && form.actionRefId) {
+    updateRecipeFromForm(form.actionRefId, payload)
+  } else {
+    addRecipeFromForm(payload)
+  }
+
+  // 新增 / 修改后立即检测循环依赖
   const cycle = detectCycle()
   if (cycle.length > 0) {
     ElMessageBox.alert(
@@ -458,7 +503,7 @@ function submit() {
       { type: 'warning', confirmButtonText: '我知道了' },
     )
   } else {
-    ElMessage.success('配方已生成')
+    ElMessage.success(isEditMode.value ? '配方已更新' : '配方已生成')
   }
 
   // 关闭弹窗
@@ -705,7 +750,7 @@ function submit() {
       </div>
 
       <el-button type="primary" style="width: 100%; margin-top: 14px" @click="submit">
-        生成配方节点
+        {{ isEditMode ? '保存修改' : '生成配方节点' }}
       </el-button>
     </el-form>
     <input ref="attrIconFileInput" type="file" accept="image/*" style="display: none" @change="onAttrIconFileChange" />

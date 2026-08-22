@@ -148,6 +148,8 @@ const selectedNodeId = ref<string | null>(null)
 const selectedEdgeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
 const formDialogVisible = ref(false)
+const formEditActionId = ref<string | null>(null)
+const formDialogTitle = ref('配方录入')
 const groupDrawerVisible = ref(false)
 
 // ---- 顶部工具栏：全局搜索节点 ----
@@ -251,6 +253,8 @@ onConnect((connection) => {
 
 // ---- 顶部工具栏：添加 / 保存 / 导出 / 导入 / 重置 ----
 function onAddRecipe() {
+  formEditActionId.value = null
+  formDialogTitle.value = '配方录入'
   formDialogVisible.value = true
 }
 
@@ -405,6 +409,14 @@ function onCtxEdit(nodeId: string) {
   selectedEdgeId.value = null
   highlightFromNode(nodeId)
 }
+function onCtxEditRecipe(nodeId: string) {
+  selectedNodeId.value = nodeId
+  selectedEdgeId.value = null
+  highlightFromNode(nodeId)
+  formEditActionId.value = nodeId
+  formDialogTitle.value = '修改配方'
+  formDialogVisible.value = true
+}
 function onCtxDuplicate(nodeId: string) {
   duplicateNode(nodeId)
   persist()
@@ -507,7 +519,7 @@ const shortcutsList = [
 
     <!-- 自定义右键菜单 -->
     <ContextMenu @create-item="onCtxCreateItem" @create-action="onCtxCreateAction" @edit="onCtxEdit"
-      @duplicate="onCtxDuplicate" @remove="onCtxRemove" />
+      @edit-recipe="onCtxEditRecipe" @duplicate="onCtxDuplicate" @remove="onCtxRemove" />
 
     <!-- 快捷键说明弹窗 -->
     <el-dialog v-model="shortcutsVisible" title="快捷键说明" width="440px" append-to-body>
@@ -545,9 +557,9 @@ const shortcutsList = [
     </el-dialog>
 
     <!-- 配方录入弹窗 -->
-    <el-dialog v-model="formDialogVisible" title="配方录入" width="980px" top="40px" class="recipe-dialog"
-      :close-on-click-modal="false" append-to-body>
-      <FormPanel @submitted="formDialogVisible = false" />
+    <el-dialog v-model="formDialogVisible" :title="formDialogTitle" width="980px" top="40px" class="recipe-dialog"
+      :close-on-click-modal="false" append-to-body @closed="formEditActionId = null">
+      <FormPanel :edit-action-id="formEditActionId" @submitted="formDialogVisible = false" />
     </el-dialog>
   </div>
 </template>

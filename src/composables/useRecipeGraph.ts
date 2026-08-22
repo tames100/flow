@@ -492,6 +492,309 @@ export function useRecipeGraph() {
     };
   }
 
+  /**
+   * 从加工动作节点反向解析配方数据。
+   * 收集该 action 的所有输入/输出边及对应物品节点，组装为可编辑的 RecipeForm。
+   * 用于「修改配方」流程：把画布上的现有配方加载到 FormPanel 中重新编辑。
+   * 返回的 form 中：
+   *   - inputs[].refId / outputs[].refId 为对应物品节点 id（提交时优先复用而非新建）
+   *   - actionRefId 为 actionId 本身（提交时复用该 action 节点）
+   */
+  function loadRecipeFromAction(actionId: string): RecipeForm | null {
+    const action = findNode(actionId);
+    if (!action || action.data?.kind !== "action") return null;
+    const aData = action.data as ActionNodeData;
+
+    const inEdges = (getEdges.value as any[]).filter(
+      (e) => e.target === actionId,
+    );
+    const outEdges = (getEdges.value as any[]).filter(
+      (e) => e.source === actionId,
+    );
+
+    const inputs = inEdges.map((e: any) => {
+      const n = findNode(e.source);
+      const d = (n?.data ?? {}) as ItemNodeData;
+      return {
+        name: d.label ?? "",
+        image: d.image ?? "",
+        quantity: qtyFromLabel(e.label),
+        unit: (e.unit as string) ?? resolveUnit(e.source, actionId),
+        description: d.description ?? "",
+        attributes: d.attributes
+          ? (JSON.parse(JSON.stringify(d.attributes)) as ItemAttribute[])
+          : [],
+        refId: n?.id,
+        groupIds: d.groupIds ? [...d.groupIds] : [],
+      };
+    });
+
+    const outputs = outEdges.map((e: any) => {
+      const n = findNode(e.target);
+      const d = (n?.data ?? {}) as ItemNodeData;
+      return {
+        name: d.label ?? "",
+        image: d.image ?? "",
+        quantity: qtyFromLabel(e.label),
+        description: d.description ?? "",
+        attributes: d.attributes
+          ? (JSON.parse(JSON.stringify(d.attributes)) as ItemAttribute[])
+          : [],
+        refId: n?.id,
+        groupIds: d.groupIds ? [...d.groupIds] : [],
+      };
+    });
+
+    return {
+      inputs: inputs.length
+        ? inputs
+        : [
+            {
+              name: "",
+              image: "",
+              quantity: 1,
+              unit: DEFAULT_UNIT,
+              description: "",
+              attributes: [],
+              groupIds: [],
+            },
+          ],
+      action: aData.action ?? aData.label ?? "",
+      actionImage: aData.image ?? "",
+      actionDescription: aData.description ?? "",
+      actionExtra: aData.extra ?? "",
+      actionOutputUnit: aData.outputUnit || DEFAULT_UNIT,
+      actionRefId: actionId,
+      reuseActionImage: true,
+      actionGroupIds: aData.groupIds ? [...aData.groupIds] : [],
+      outputs: outputs.length
+        ? outputs
+        : [
+            {
+              name: "",
+              image: "",
+              quantity: 1,
+              description: "",
+              attributes: [],
+              groupIds: [],
+            },
+          ],
+    };
+  }
+
+  /**
+   * 根据表单增量更新已有加工节点的配方连线与物品节点。
+   * - 删除该 action 的所有旧 in/out 连线
+   * - 对比新旧输入/输出：refId 命中的复用并更新节点属性；其余按需新建；不再使用的旧物品节点若被其他 action 引用则保留，否则删除
+   * - 更新 action 节点本身字段（action/extra/outputUnit/image/description/groupIds）
+   * - 重建 in/out 连线（样式与单位继承规则同 addRecipeFromForm）
+   */
+  function updateRecipeFromForm(actionId: string, form: RecipeForm) {
+    const action = findNode(actionId);
+    if (!action || action.data?.kind !== "action") {
+      throw new Error("加工节点不存在或类型不匹配");
+    }
+
+    const oldInEdges = (getEdges.value as any[]).filter(
+      (e) => e.target === actionId,
+    );
+    const oldOutEdges = (getEdges.value as any[]).filter(
+      (e) => e.source === actionId,
+    );
+    const oldInputIds = new Set(oldInEdges.map((e) => e.source));
+    const oldOutputIds = new Set(oldOutEdges.map((e) => e.target));
+
+    // 1) 删除所有旧 in/out 连线
+    oldInEdges.forEach((e) => removeEdges(e.id));
+    oldOutEdges.forEach((e) => removeEdges(e.id));
+
+    // 2) 解析新输入：refId 命中复用并更新，否则新建
+    const usedInputIds = new Set<string>();
+    const inputSources = form.inputs.map((inp, i) => {
+      const reuseId =
+        inp.refId && oldInputIds.has(inp.refId) ? inp.refId : undefined;
+      if (reuseId) {
+        usedInputIds.add(reuseId);
+        const existing = findNode(reuseId);
+        if (existing) {
+          updateNode(reuseId, {
+            data: {
+              ...existing.data,
+              label: inp.name.trim(),
+              image: inp.image ?? "",
+              description: inp.description ?? undefined,
+              attributes: inp.attributes?.length
+                ? (JSON.parse(
+                    JSON.stringify(inp.attributes),
+                  ) as ItemAttribute[])
+                : undefined,
+              groupIds: inp.groupIds?.length ? [...inp.groupIds] : undefined,
+            } as ItemNodeData,
+          });
+        }
+        return {
+          node: existing!,
+          quantity: inp.quantity ?? 1,
+          unit: inp.unit ?? "",
+        };
+      }
+      // 新建输入物品节点（与 addRecipeFromForm 布局无关，位置由新连线的节点偏移决定；这里放在 action 节点左侧偏移）
+      const pos = {
+        x: action.position.x - 240,
+        y: action.position.y + i * 90,
+      };
+      const n = createItemNode(
+        inp.name.trim(),
+        inp.image ?? "",
+        pos,
+        true,
+        1,
+        inp.description,
+        inp.attributes ?? [],
+      );
+      if (inp.groupIds?.length) (n.data as any).groupIds = [...inp.groupIds];
+      addNodes([n as any]);
+      return { node: n, quantity: inp.quantity ?? 1, unit: inp.unit ?? "" };
+    });
+
+    // 3) 解析新输出：refId 命中复用并更新，否则新建
+    const usedOutputIds = new Set<string>();
+    const outputNodes = form.outputs.map((out, j) => {
+      const reuseId =
+        out.refId && oldOutputIds.has(out.refId) ? out.refId : undefined;
+      if (reuseId) {
+        usedOutputIds.add(reuseId);
+        const existing = findNode(reuseId);
+        if (existing) {
+          updateNode(reuseId, {
+            data: {
+              ...existing.data,
+              label: out.name.trim(),
+              image: out.image ?? "",
+              description: out.description ?? undefined,
+              attributes: out.attributes?.length
+                ? (JSON.parse(
+                    JSON.stringify(out.attributes),
+                  ) as ItemAttribute[])
+                : undefined,
+              groupIds: out.groupIds?.length ? [...out.groupIds] : undefined,
+            } as ItemNodeData,
+          });
+        }
+        return existing!;
+      }
+      const pos = {
+        x: action.position.x + 460,
+        y: action.position.y + j * 90,
+      };
+      const n = createItemNode(
+        out.name.trim(),
+        out.image ?? "",
+        pos,
+        true,
+        1,
+        out.description,
+        out.attributes ?? [],
+      );
+      (n.data as any).quantity = out.quantity ?? 1;
+      if (out.groupIds?.length) (n.data as any).groupIds = [...out.groupIds];
+      addNodes([n as any]);
+      return n;
+    });
+
+    // 4) 删除不再使用的旧物品节点（前提：没有被其他 action / 其他连线引用）
+    const orphanIds = [...oldInputIds, ...oldOutputIds].filter(
+      (id) => !usedInputIds.has(id) && !usedOutputIds.has(id),
+    );
+    orphanIds.forEach((id) => {
+      // 检查是否还有其他连线引用该节点
+      const stillReferenced = (getEdges.value as any[]).some(
+        (e) => e.source === id || e.target === id,
+      );
+      if (!stillReferenced) {
+        removeNodes(id);
+        nodes.value = nodes.value.filter((n) => n.id !== id);
+      }
+    });
+
+    // 5) 更新 action 节点本身字段
+    const nextActionData: ActionNodeData = {
+      ...(action.data as ActionNodeData),
+      action: form.action,
+      label: form.action,
+      image: form.actionImage ?? "",
+      description: form.actionDescription ?? undefined,
+      extra: form.actionExtra ?? undefined,
+      outputUnit: form.actionOutputUnit || DEFAULT_UNIT,
+      groupIds: form.actionGroupIds?.length
+        ? [...form.actionGroupIds]
+        : undefined,
+    };
+    updateNode(actionId, { data: nextActionData as any });
+
+    // 6) 重建 in/out 连线（样式与单位继承规则同 addRecipeFromForm）
+    const actionOutUnit = nextActionData.outputUnit || DEFAULT_UNIT;
+    const newEdges: RecipeEdge[] = [
+      ...inputSources.map((s) => {
+        const unit = s.unit || resolveUnit(s.node.id, actionId);
+        return {
+          id: genId("e"),
+          source: s.node.id,
+          target: actionId,
+          class: "recipe-edge",
+          animated: true,
+          style: { stroke: "#409eff", strokeWidth: 2, strokeDasharray: "8 4" },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#409eff",
+            width: 16,
+            height: 16,
+          },
+          unit,
+          label: edgeLabel(s.quantity ?? 1, unit),
+          labelStyle: { fill: "#409eff", fontWeight: 700, fontSize: "12px" },
+          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.9 },
+          labelBgPadding: [4, 2] as [number, number],
+          labelBgBorderRadius: 4,
+        };
+      }),
+      ...outputNodes.map((outputNode) => {
+        const outQty = (outputNode.data as any).quantity ?? 1;
+        return {
+          id: genId("e"),
+          source: actionId,
+          target: outputNode.id,
+          class: "recipe-edge",
+          animated: true,
+          style: { stroke: "#e6a23c", strokeWidth: 2, strokeDasharray: "8 4" },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#e6a23c",
+            width: 16,
+            height: 16,
+          },
+          unit: actionOutUnit,
+          label: edgeLabel(outQty, actionOutUnit),
+          labelStyle: { fill: "#e6a23c", fontWeight: 700, fontSize: "12px" },
+          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.9 },
+          labelBgPadding: [4, 2] as [number, number],
+          labelBgBorderRadius: 4,
+        };
+      }),
+    ];
+    addEdges(newEdges as any);
+
+    // 同步本地 ref 副本（含新增节点 + 删除节点 + action 自身更新）
+    nodes.value = JSON.parse(JSON.stringify(serializeNodes()));
+    edges.value = JSON.parse(JSON.stringify(serializeEdges()));
+    persist();
+    return {
+      inputNodes: inputSources.map((s) => s.node),
+      actionNode: action,
+      outputNodes,
+    };
+  }
+
   /** 删除节点（连同其相关连线） */
   function deleteNode(id: string) {
     const related = edges.value.filter(
@@ -1086,6 +1389,8 @@ export function useRecipeGraph() {
     createItemNode,
     createActionNode,
     addRecipeFromForm,
+    loadRecipeFromAction,
+    updateRecipeFromForm,
     deleteNode,
     duplicateNode,
     detectCycle,
