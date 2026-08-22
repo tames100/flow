@@ -2,6 +2,9 @@
 
 基于 **Vue 3 + `<script setup>` + Vue-Flow + Element Plus + TypeScript** 开发的游戏合成配方 DAG（有向无环图）可视化编辑器。
 
+> 建议使用电脑进行查看，项目并没有做媒体查询。
+> `json`文件夹下有示例配方 JSON 文件，可直接导入查看。
+
 ## 功能一览
 
 1. **两类节点**
