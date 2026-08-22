@@ -359,8 +359,15 @@ export function useRecipeGraph() {
       return { node: n, quantity: inp.quantity ?? 1 };
     });
 
-    // 输出节点（至少一个，可多个）
+    // 输出节点（至少一个，可多个）；若选择了已有物品节点则复用（不新建）
     const outputNodes = form.outputs.map((out, j) => {
+      if (out.refId) {
+        const existing = findNode(out.refId);
+        if (existing) {
+          // 复用已有节点，仅用其 id + 表单数量生成输出边
+          return { id: existing.id, data: { quantity: out.quantity ?? 1 } };
+        }
+      }
       const n = createItemNode(
         out.name,
         out.image ?? "",

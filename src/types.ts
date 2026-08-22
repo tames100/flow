@@ -149,6 +149,8 @@ export interface RecipeForm {
     description?: string;
     /** 输出产物属性（图标 + 名称 + 值 + 说明，图标与说明非必选） */
     attributes?: ItemAttribute[];
+    /** 若选择了画布中已有的物品节点作为输出目标，记录其节点 id */
+    refId?: string;
     /** 该输出产物所属分组 id 列表（一个产物可归属多个分组） */
     groupIds?: string[];
   }[];

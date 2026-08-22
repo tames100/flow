@@ -358,6 +358,15 @@ function onSelectExisting(idx: number, nodeId: string) {
   form.inputs[idx].refId = nodeId
 }
 
+/** 输出行：选择已有物品节点作为输出目标，带入名称与图片 */
+function onSelectExistingOutput(idx: number, nodeId: string) {
+  const item = getItemNodes().find((n) => n.id === nodeId)
+  if (!item) return
+  form.outputs[idx].name = item.name
+  form.outputs[idx].image = item.image
+  form.outputs[idx].refId = nodeId
+}
+
 /** 选择已有加工节点：带入动作名称；若勾选复用图片，则带入该节点图片 */
 function onSelectExistingAction(nodeId?: string) {
   if (!nodeId) {
@@ -435,6 +444,7 @@ function submit() {
       quantity: o.quantity,
       description: o.description ?? '',
       attributes: cleanAttrs(o.attributes),
+      refId: o.refId,
       groupIds: o.groupIds ?? [],
     })),
   })
@@ -622,7 +632,17 @@ function submit() {
         <div class="form-col">
           <div class="section-label">输出</div>
           <div v-for="(out, idx) in form.outputs" :key="idx" class="input-row">
-            <el-input v-model="out.name" placeholder="产物名称" clearable @focus="pasteTarget = `out${idx}`" />
+            <el-select :model-value="out.refId" placeholder="选择已有物品（可选）" clearable filterable style="width: 100%"
+              @focus="pasteTarget = `out${idx}`" @change="(v: string) => onSelectExistingOutput(idx, v)">
+              <el-option v-for="n in getItemNodes()" :key="n.id" :label="n.name" :value="n.id">
+                <span style="display: flex; align-items: center; gap: 6px">
+                  <img v-if="n.image" :src="n.image" class="opt-thumb" />
+                  <span>{{ n.name || '未命名' }}</span>
+                </span>
+              </el-option>
+            </el-select>
+            <el-input v-model="out.name" placeholder="产物名称" clearable style="margin-top: 6px"
+              @focus="pasteTarget = `out${idx}`" />
             <div class="name-quantity" style="margin-top: 6px">
               <span class="qty-label">产出数量</span>
               <el-input-number v-model="out.quantity" :min="1" :max="9999" size="small" controls-position="right"
