@@ -729,8 +729,7 @@ watch(edgeId, (v) => emit('update:edge', v))
               <div class="attr-trace-head">
                 <span class="attr-trace-name">{{ t.name }}</span>
                 <span v-if="t.targetAttr" class="attr-trace-target">
-                  {{ label }}：
-                  <template v-if="t.targetAttr.icon">{{ t.targetAttr.icon }} </template>{{ t.targetAttr.value }}
+                  {{ label }}：{{ t.name }} {{ t.targetAttr.value }}
                 </span>
               </div>
               <div v-if="t.items.length">
