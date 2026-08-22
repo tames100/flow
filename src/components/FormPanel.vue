@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
+import { reactive, ref } from 'vue'
 import {
   useRecipeGraph,
   useActionTypes,
   useImageUpload,
   useImageCrop,
   fileToDataURL,
+  fileBaseName,
   isImageIcon,
   type ItemAttribute,
   type RecipeForm,
@@ -14,7 +15,7 @@ import { DEFAULT_EXTRAS, DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 
 const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
-const { open: openCrop, state: cropState } = useImageCrop()
+const { open: openCrop } = useImageCrop()
 
 const emit = defineEmits<{ submitted: [] }>()
 
@@ -84,22 +85,6 @@ async function onAttrIconFileChange(e: Event) {
   }
 }
 
-/** 在图标输入框中粘贴图片 */
-function onAttrIconPaste(a: ItemAttribute, e: ClipboardEvent) {
-  const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
-    i.type.startsWith('image/'),
-  )
-  if (!item) return
-  e.preventDefault()
-  const f = item.getAsFile()
-  if (!f) return
-  fileToDataURL(f)
-    .then((url) => {
-      a.icon = url
-    })
-    .catch((err: any) => ElMessage.warning(err?.message ?? '图片读取失败'))
-}
-
 const inputUpload = useImageUpload()
 const outputUpload = useImageUpload()
 const actionUpload = useImageUpload()
@@ -121,10 +106,79 @@ function setImage(target: string, dataUrl: string) {
   else form.inputs[Number(target.slice(2))].image = dataUrl
 }
 
+/** 获取目标对应的名称字段访问器（物品 / 加工动作） */
+function getNameAccessor(target: string): { get: () => string; set: (v: string) => void } | null {
+  if (target === 'action') {
+    return {
+      get: () => form.action,
+      set: (v: string) => { form.action = v },
+    }
+  }
+  if (target.startsWith('out')) {
+    const idx = Number(target.slice(3))
+    return {
+      get: () => form.outputs[idx]?.name ?? '',
+      set: (v: string) => {
+        if (form.outputs[idx]) form.outputs[idx].name = v
+      },
+    }
+  }
+  if (target.startsWith('in')) {
+    const idx = Number(target.slice(2))
+    return {
+      get: () => form.inputs[idx]?.name ?? '',
+      set: (v: string) => {
+        if (form.inputs[idx]) form.inputs[idx].name = v
+      },
+    }
+  }
+  return null
+}
+
+/** 名称标签：动作 vs 物品 */
+function getNameLabel(target: string): string {
+  return target === 'action' ? '动作名称' : '物品名称'
+}
+
+/**
+ * 上传图片后根据文件名同步物品/动作名称：
+ * - 名称为空：直接用图片名（去扩展名）填入
+ * - 名称与图片名一致：无操作
+ * - 名称与图片名不一致：弹窗让用户选择是否用图片名替换（展示两者）
+ */
+async function maybeUpdateName(target: string, file: File) {
+  const acc = getNameAccessor(target)
+  if (!acc) return
+  const baseName = fileBaseName(file)
+  if (!baseName) return
+  const current = acc.get().trim()
+  if (!current) {
+    acc.set(baseName)
+    return
+  }
+  if (current === baseName) return
+  try {
+    await ElMessageBox.confirm(
+      `${getNameLabel(target)}：${current}\n图片名称：${baseName}\n\n是否使用图片名称替换当前名称？`,
+      '名称不一致',
+      {
+        confirmButtonText: '使用图片名称',
+        cancelButtonText: '保留原名称',
+        type: 'warning',
+      },
+    )
+    acc.set(baseName)
+  } catch {
+    // 用户选择保留原名称
+  }
+}
+
 /** 上传图片统一入口：先打开裁剪弹窗，用户确认后才写入目标图片槽（取消则忽略） */
-async function cropAndSet(target: string, dataUrl: string) {
+async function cropAndSet(target: string, dataUrl: string, file?: File) {
   const cropped = await openCrop(dataUrl)
-  if (cropped) setImage(target, cropped)
+  if (!cropped) return
+  setImage(target, cropped)
+  if (file) await maybeUpdateName(target, file)
 }
 
 function pickImage(target: string) {
@@ -134,7 +188,7 @@ function pickImage(target: string) {
   inp.onchange = (e) => {
     const f = (e.target as HTMLInputElement).files?.[0]
     if (!f) return
-    upload.handleFile(f).then(() => cropAndSet(target, upload.image.value))
+    upload.handleFile(f).then(() => cropAndSet(target, upload.image.value, f))
   }
   inp.click()
 }
@@ -142,23 +196,11 @@ function pickImage(target: string) {
 // 拖拽放置
 async function onDrop(target: string, e: DragEvent) {
   e.preventDefault()
-  pasteTarget.value = target
   const upload = resolveUpload(target)
-  await upload.handleFile(e.dataTransfer?.files?.[0])
-  await cropAndSet(target, upload.image.value)
+  const file = e.dataTransfer?.files?.[0]
+  await upload.handleFile(file)
+  await cropAndSet(target, upload.image.value, file)
 }
-
-// 全局粘贴：写入当前激活的图片槽（裁剪弹窗打开期间忽略，避免干扰裁剪操作）
-async function onPaste(e: ClipboardEvent) {
-  if (cropState.visible) return
-  const upload = resolveUpload(pasteTarget.value)
-  await upload.onPaste(e)
-  if (!upload.image.value) return
-  await cropAndSet(pasteTarget.value, upload.image.value)
-}
-
-onMounted(() => window.addEventListener('paste', onPaste))
-onBeforeUnmount(() => window.removeEventListener('paste', onPaste))
 
 function addInputRow() {
   form.inputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [] })
@@ -312,15 +354,8 @@ function submit() {
         <div class="form-col">
           <div class="section-label">输入</div>
           <div v-for="(inp, idx) in form.inputs" :key="idx" class="input-row">
-            <el-select
-              :model-value="inp.refId"
-              placeholder="选择已有产物（可选）"
-              clearable
-              filterable
-              style="width: 100%"
-              @focus="pasteTarget = `in${idx}`"
-              @change="(v: string) => onSelectExisting(idx, v)"
-            >
+            <el-select :model-value="inp.refId" placeholder="选择已有产物（可选）" clearable filterable style="width: 100%"
+              @focus="pasteTarget = `in${idx}`" @change="(v: string) => onSelectExisting(idx, v)">
               <el-option v-for="n in getItemNodes()" :key="n.id" :label="n.name" :value="n.id">
                 <span style="display: flex; align-items: center; gap: 6px">
                   <img v-if="n.image" :src="n.image" class="opt-thumb" />
@@ -333,14 +368,8 @@ function submit() {
               <el-input-number v-model="inp.quantity" :min="1" :max="9999" size="small" controls-position="right"
                 class="qty-input" />
             </div>
-            <el-input
-              v-model="inp.description"
-              type="textarea"
-              :autosize="{ minRows: 1, maxRows: 4 }"
-              placeholder="输入解释（可选，展示在节点上）"
-              class="desc-input"
-              @focus="pasteTarget = `in${idx}`"
-            />
+            <el-input v-model="inp.description" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }"
+              placeholder="输入解释（可选，展示在节点上）" class="desc-input" @focus="pasteTarget = `in${idx}`" />
             <!-- 物品属性（可折叠）：图标 + 名称 + 值 + 说明 -->
             <div class="attr-block">
               <div class="attr-toggle" @click="toggleAttrArea(`in${idx}`)">
@@ -350,23 +379,16 @@ function submit() {
               <div v-if="attrExpanded[`in${idx}`]" class="attr-list">
                 <div v-for="(a, aidx) in inp.attributes" :key="aidx" class="attr-item">
                   <div class="attr-item-main">
-                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标（也可粘贴图片）' : '点击上传图标（也可粘贴图片）'"
-                      @click="pickAttrIcon(a)">
+                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标' : '点击上传图标'" @click="pickAttrIcon(a)">
                       <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
                       <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
                     </span>
-                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon"
-                      @paste="onAttrIconPaste(a, $event)" />
+                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon" />
                     <el-input v-model="a.name" placeholder="名称" size="small" class="attr-name" />
                     <el-input v-model="a.value" placeholder="值" size="small" class="attr-value" />
                     <el-button link type="danger" size="small" @click="removeInputAttr(idx, aidx)">删</el-button>
                   </div>
-                  <el-input
-                    v-model="a.desc"
-                    placeholder="说明（可选）"
-                    size="small"
-                    class="attr-desc"
-                  />
+                  <el-input v-model="a.desc" placeholder="说明（可选）" size="small" class="attr-desc" />
                 </div>
                 <el-button text type="primary" size="small" @click="addInputAttr(idx)">+ 添加属性</el-button>
               </div>
@@ -376,16 +398,10 @@ function submit() {
               <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
             </div>
             <!-- 整行宽拖拽上传区 -->
-            <div
-              class="drop-zone full"
-              :class="{ active: pasteTarget === `in${idx}` }"
-              @click="pickImage(`in${idx}`)"
-              @mouseenter="pasteTarget = `in${idx}`"
-              @drop="onDrop(`in${idx}`, $event)"
-              @dragover.prevent
-            >
+            <div class="drop-zone full" :class="{ active: pasteTarget === `in${idx}` }" @click="pickImage(`in${idx}`)"
+              @mouseenter="pasteTarget = `in${idx}`" @drop="onDrop(`in${idx}`, $event)" @dragover.prevent>
               <img v-if="inp.image" :src="inp.image" class="thumb" />
-              <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
+              <span v-else class="drop-hint">点击 / 拖拽 上传图片</span>
             </div>
           </div>
           <el-button text type="primary" @click="addInputRow">+ 添加输入</el-button>
@@ -394,14 +410,8 @@ function submit() {
         <!-- 中列：加工 -->
         <div class="form-col">
           <div class="section-label">加工</div>
-          <el-select
-            :model-value="form.actionRefId"
-            placeholder="选择已有加工节点（可选）"
-            clearable
-            filterable
-            style="width: 100%"
-            @change="onSelectExistingAction"
-          >
+          <el-select :model-value="form.actionRefId" placeholder="选择已有加工节点（可选）" clearable filterable style="width: 100%"
+            @change="onSelectExistingAction">
             <el-option v-for="n in getActionNodes()" :key="n.id" :label="n.name" :value="n.id">
               <span style="display: flex; align-items: center; gap: 6px">
                 <img v-if="n.image" :src="n.image" class="opt-thumb" />
@@ -409,70 +419,33 @@ function submit() {
               </span>
             </el-option>
           </el-select>
-          <el-select
-            v-model="form.action"
-            style="width: 100%; margin-top: 6px"
-            filterable
-            allow-create
-            default-first-option
-            placeholder="选择或输入自定义动作"
-            @change="onActionNameChange"
-          >
+          <el-select v-model="form.action" style="width: 100%; margin-top: 6px" filterable allow-create
+            default-first-option placeholder="选择或输入自定义动作" @change="onActionNameChange">
             <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
           </el-select>
-          <el-checkbox
-            v-if="form.actionRefId"
-            v-model="form.reuseActionImage"
-            style="margin-top: 6px"
-            @change="onToggleReuse"
-          >
+          <el-checkbox v-if="form.actionRefId" v-model="form.reuseActionImage" style="margin-top: 6px"
+            @change="onToggleReuse">
             复用该加工节点的图片
           </el-checkbox>
           <!-- 加工动作图标图片上传（点击/拖拽/粘贴） -->
-          <div
-            class="drop-zone full"
-            :class="{ active: pasteTarget === 'action' }"
-            @click="pickImage('action')"
-            @mouseenter="pasteTarget = 'action'"
-            @drop="onDrop('action', $event)"
-            @dragover.prevent
-          >
+          <div class="drop-zone full" :class="{ active: pasteTarget === 'action' }" @click="pickImage('action')"
+            @mouseenter="pasteTarget = 'action'" @drop="onDrop('action', $event)" @dragover.prevent>
             <img v-if="form.actionImage" :src="form.actionImage" class="thumb" />
-            <span v-else class="drop-hint">点击 / 拖拽 / 粘贴动作图标</span>
+            <span v-else class="drop-hint">点击 / 拖拽 上传动作图标</span>
           </div>
-          <el-input
-            v-model="form.actionDescription"
-            type="textarea"
-            :autosize="{ minRows: 1, maxRows: 4 }"
-            placeholder="加工解释（可选，展示在节点上）"
-            class="desc-input"
-            style="margin-top: 6px"
-          />
+          <el-input v-model="form.actionDescription" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }"
+            placeholder="加工解释（可选，展示在节点上）" class="desc-input" style="margin-top: 6px" />
           <div class="name-quantity" style="margin-top: 6px">
             <span class="qty-label">附加操作</span>
-            <el-select
-              v-model="form.actionExtra"
-              filterable
-              allow-create
-              default-first-option
-              clearable
-              size="small"
-              style="flex: 1"
-              placeholder="选择或自定义，如：需要加热"
-            >
+            <el-select v-model="form.actionExtra" filterable allow-create default-first-option clearable size="small"
+              style="flex: 1" placeholder="选择或自定义，如：需要加热">
               <el-option v-for="x in DEFAULT_EXTRAS" :key="x" :label="x" :value="x" />
             </el-select>
           </div>
           <div class="name-quantity" style="margin-top: 6px">
             <span class="qty-label">输出单位</span>
-            <el-select
-              v-model="form.actionOutputUnit"
-              filterable
-              allow-create
-              default-first-option
-              size="small"
-              style="flex: 1"
-            >
+            <el-select v-model="form.actionOutputUnit" filterable allow-create default-first-option size="small"
+              style="flex: 1">
               <el-option v-for="u in DEFAULT_UNITS" :key="u" :label="u" :value="u" />
             </el-select>
           </div>
@@ -488,14 +461,8 @@ function submit() {
               <el-input-number v-model="out.quantity" :min="1" :max="9999" size="small" controls-position="right"
                 class="qty-input" />
             </div>
-            <el-input
-              v-model="out.description"
-              type="textarea"
-              :autosize="{ minRows: 1, maxRows: 4 }"
-              placeholder="产物解释（可选，展示在节点上）"
-              class="desc-input"
-              style="margin-top: 6px"
-            />
+            <el-input v-model="out.description" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }"
+              placeholder="产物解释（可选，展示在节点上）" class="desc-input" style="margin-top: 6px" />
             <!-- 产物属性（可折叠）：图标 + 名称 + 值 + 说明 -->
             <div class="attr-block" style="margin-top: 6px">
               <div class="attr-toggle" @click="toggleAttrArea(`out${idx}`)">
@@ -505,23 +472,16 @@ function submit() {
               <div v-if="attrExpanded[`out${idx}`]" class="attr-list">
                 <div v-for="(a, aidx) in out.attributes" :key="aidx" class="attr-item">
                   <div class="attr-item-main">
-                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标（也可粘贴图片）' : '点击上传图标（也可粘贴图片）'"
-                      @click="pickAttrIcon(a)">
+                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标' : '点击上传图标'" @click="pickAttrIcon(a)">
                       <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
                       <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
                     </span>
-                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon"
-                      @paste="onAttrIconPaste(a, $event)" />
+                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon" />
                     <el-input v-model="a.name" placeholder="名称" size="small" class="attr-name" />
                     <el-input v-model="a.value" placeholder="值" size="small" class="attr-value" />
                     <el-button link type="danger" size="small" @click="removeOutputAttr(idx, aidx)">删</el-button>
                   </div>
-                  <el-input
-                    v-model="a.desc"
-                    placeholder="说明（可选）"
-                    size="small"
-                    class="attr-desc"
-                  />
+                  <el-input v-model="a.desc" placeholder="说明（可选）" size="small" class="attr-desc" />
                 </div>
                 <el-button text type="primary" size="small" @click="addOutputAttr(idx)">+ 添加属性</el-button>
               </div>
@@ -530,16 +490,10 @@ function submit() {
               <el-button v-if="out.image" link type="primary" size="small" @click="out.image = ''">清除图</el-button>
               <el-button link type="danger" size="small" @click="removeOutputRow(idx)">删除</el-button>
             </div>
-            <div
-              class="drop-zone full"
-              :class="{ active: pasteTarget === `out${idx}` }"
-              @click="pickImage(`out${idx}`)"
-              @mouseenter="pasteTarget = `out${idx}`"
-              @drop="onDrop(`out${idx}`, $event)"
-              @dragover.prevent
-            >
+            <div class="drop-zone full" :class="{ active: pasteTarget === `out${idx}` }" @click="pickImage(`out${idx}`)"
+              @mouseenter="pasteTarget = `out${idx}`" @drop="onDrop(`out${idx}`, $event)" @dragover.prevent>
               <img v-if="out.image" :src="out.image" class="thumb" />
-              <span v-else class="drop-hint">点击 / 拖拽 / 粘贴图片</span>
+              <span v-else class="drop-hint">点击 / 拖拽 上传图片</span>
             </div>
           </div>
           <el-button text type="primary" @click="addOutputRow">+ 添加输出</el-button>
@@ -550,8 +504,7 @@ function submit() {
         生成配方节点
       </el-button>
     </el-form>
-    <input ref="attrIconFileInput" type="file" accept="image/*" style="display: none"
-      @change="onAttrIconFileChange" />
+    <input ref="attrIconFileInput" type="file" accept="image/*" style="display: none" @change="onAttrIconFileChange" />
   </div>
 </template>
 
@@ -561,12 +514,14 @@ function submit() {
   height: 100%;
   overflow-y: auto;
 }
+
 .section-label {
   font-size: 13px;
   font-weight: 600;
   color: #606266;
   margin-bottom: 8px;
 }
+
 /* 三栏布局：输入 | 加工 | 输出 */
 .form-columns {
   display: grid;
@@ -574,26 +529,31 @@ function submit() {
   gap: 12px;
   align-items: start;
 }
+
 .form-col {
   border: 1px solid #ebeef5;
   border-radius: 8px;
   padding: 10px;
   background: #fafafa;
 }
+
 .name-quantity {
   display: flex;
   align-items: center;
   gap: 6px;
 }
+
 .qty-label {
   font-size: 13px;
   color: #606266;
   white-space: nowrap;
 }
+
 .qty-input {
   width: 100px;
   flex-shrink: 0;
 }
+
 .input-row {
   display: flex;
   flex-direction: column;
@@ -602,14 +562,17 @@ function submit() {
   padding-bottom: 10px;
   border-bottom: 1px dashed #ebeef5;
 }
+
 .desc-input :deep(.el-textarea__inner) {
   font-size: 12px;
   padding: 4px 8px;
 }
+
 .row-actions {
   display: flex;
   gap: 6px;
 }
+
 .thumb {
   width: 40px;
   height: 40px;
@@ -617,6 +580,7 @@ function submit() {
   border-radius: 6px;
   border: 1px solid #dcdfe6;
 }
+
 .drop-zone {
   border: 1px dashed #c0c4cc;
   border-radius: 6px;
@@ -626,30 +590,36 @@ function submit() {
   cursor: pointer;
   overflow: hidden;
 }
+
 .drop-zone.full {
   width: 100%;
   height: 44px;
 }
+
 .drop-zone.active {
   border-color: #409eff;
   background: #ecf5ff;
 }
+
 .drop-hint {
   font-size: 12px;
   color: #c0c4cc;
 }
+
 .opt-thumb {
   width: 20px;
   height: 20px;
   object-fit: cover;
   border-radius: 4px;
 }
+
 /* 物品属性编辑区 */
 .attr-block {
   border: 1px solid #ebeef5;
   border-radius: 6px;
   overflow: hidden;
 }
+
 .attr-toggle {
   display: flex;
   align-items: center;
@@ -660,13 +630,16 @@ function submit() {
   font-size: 12px;
   color: #606266;
 }
+
 .attr-toggle:hover {
   background: #ecf5ff;
 }
+
 .attr-toggle-arrow {
   font-size: 10px;
   color: #909399;
 }
+
 .attr-list {
   padding: 6px;
   display: flex;
@@ -674,6 +647,7 @@ function submit() {
   gap: 6px;
   background: #fff;
 }
+
 .attr-item {
   display: flex;
   flex-direction: column;
@@ -682,11 +656,13 @@ function submit() {
   border: 1px dashed #e4e7ed;
   border-radius: 4px;
 }
+
 .attr-item-main {
   display: flex;
   gap: 4px;
   align-items: center;
 }
+
 .attr-icon-box {
   width: 26px;
   height: 26px;
@@ -700,33 +676,41 @@ function submit() {
   overflow: hidden;
   background: #fff;
 }
+
 .attr-icon-box:hover {
   border-color: #409eff;
 }
+
 .attr-icon-img {
   width: 20px;
   height: 20px;
   object-fit: contain;
 }
+
 .attr-icon-text {
   font-size: 14px;
   line-height: 1;
 }
+
 .attr-icon {
   width: 56px;
   flex-shrink: 0;
 }
+
 .attr-name {
   flex: 1;
   min-width: 0;
 }
+
 .attr-value {
   flex: 1;
   min-width: 0;
 }
+
 .attr-desc {
   width: 100%;
 }
+
 .attr-item-main :deep(.el-input__inner) {
   font-size: 12px;
 }

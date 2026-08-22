@@ -7,6 +7,7 @@ import {
   useImagePreview,
   useImageCrop,
   fileToDataURL,
+  fileBaseName,
   isImageIcon,
   type ItemAttribute,
   type AttributeTraceResult,
@@ -249,23 +250,6 @@ async function onAttrIconFileChange(e: Event) {
   }
 }
 
-/** 在图标输入框中粘贴图片 */
-function onAttrIconPaste(a: ItemAttribute, e: ClipboardEvent) {
-  const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
-    i.type.startsWith('image/'),
-  )
-  if (!item) return
-  e.preventDefault()
-  const f = item.getAsFile()
-  if (!f) return
-  fileToDataURL(f)
-    .then((url) => {
-      a.icon = url
-      saveAttrs()
-    })
-    .catch((err: any) => ElMessage.warning(err?.message ?? '图片读取失败'))
-}
-
 // ---- 配方追踪（仅物品节点）：按上游加工输入 / 输出数量反推基本原料需求 ----
 const traceQty = ref(1)
 const traceMaterials = computed(() =>
@@ -403,6 +387,39 @@ function pickImage() {
   fileInput.value?.click()
 }
 
+/**
+ * 上传图片后根据文件名同步节点名称（物品 / 加工动作）：
+ * - 名称为空：直接用图片名（去扩展名）填入
+ * - 名称与图片名一致：无操作
+ * - 名称与图片名不一致：弹窗让用户选择是否用图片名替换（展示两者）
+ */
+async function maybeUpdateNodeName(file: File) {
+  if (!node.value) return
+  const baseName = fileBaseName(file)
+  if (!baseName) return
+  const current = (label.value ?? '').trim()
+  if (!current) {
+    label.value = baseName
+    return
+  }
+  if (current === baseName) return
+  const isAction = node.value.data?.kind === 'action'
+  try {
+    await ElMessageBox.confirm(
+      `${isAction ? '动作名称' : '物品名称'}：${current}\n图片名称：${baseName}\n\n是否使用图片名称替换当前名称？`,
+      '名称不一致',
+      {
+        confirmButtonText: '使用图片名称',
+        cancelButtonText: '保留原名称',
+        type: 'warning',
+      },
+    )
+    label.value = baseName
+  } catch {
+    // 保留原名称
+  }
+}
+
 async function onFileChange(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
   if (!f) return
@@ -413,6 +430,7 @@ async function onFileChange(e: Event) {
     updateNode(node.value.id, { data: { ...node.value.data, image: cropped } })
     persist()
     ElMessage.success('图片已替换')
+    await maybeUpdateNodeName(f)
   }
   ; (e.target as HTMLInputElement).value = ''
 }
@@ -440,6 +458,7 @@ async function onActionFileChange(e: Event) {
     updateNode(node.value.id, { data: { ...node.value.data, image: cropped } })
     persist()
     ElMessage.success('动作图标已替换')
+    await maybeUpdateNodeName(f)
   }
   ; (e.target as HTMLInputElement).value = ''
 }
@@ -547,13 +566,12 @@ watch(edgeId, (v) => emit('update:edge', v))
           <div class="attr-tip">属性由「图标 + 名称 + 值 + 说明」组成，图标与说明非必选；可在下方配方追踪中选择展示属性。</div>
           <div v-for="(a, idx) in attrs" :key="idx" class="attr-row">
             <div class="attr-main">
-              <span class="attr-icon-box" :title="a.icon ? '点击更换图标（也可粘贴图片）' : '点击上传图标（也可粘贴图片）'"
-                @click="pickAttrIcon(a)">
+              <span class="attr-icon-box" :title="a.icon ? '点击更换图标' : '点击上传图标'" @click="pickAttrIcon(a)">
                 <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
                 <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
               </span>
               <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon"
-                @update:model-value="saveAttrs" @paste="onAttrIconPaste(a, $event)" />
+                @update:model-value="saveAttrs" />
               <el-input v-model="a.name" placeholder="名称" size="small" class="attr-name"
                 @update:model-value="saveAttrs" />
               <el-input v-model="a.value" placeholder="值" size="small" class="attr-value"
@@ -609,7 +627,8 @@ watch(edgeId, (v) => emit('update:edge', v))
                   <span class="trace-name" :title="it.name">{{ it.name }}</span>
                   <span class="trace-qty">
                     <template v-if="it.attr">
-                      {{ it.attr.icon ? it.attr.icon + ' ' : '' }}{{ it.attr.value }} × {{ it.qty }} = {{ it.contribution ?? '无法计算' }}
+                      {{ it.attr.icon ? it.attr.icon + ' ' : '' }}{{ it.attr.value }} × {{ it.qty }} = {{
+                        it.contribution ?? '无法计算' }}
                     </template>
                     <template v-else>无该属性</template>
                   </span>
@@ -774,6 +793,7 @@ watch(edgeId, (v) => emit('update:edge', v))
   margin: -4px 0 8px;
   line-height: 1.5;
 }
+
 .attr-row {
   display: flex;
   flex-direction: column;
@@ -784,11 +804,13 @@ watch(edgeId, (v) => emit('update:edge', v))
   margin-bottom: 6px;
   background: #fff;
 }
+
 .attr-main {
   display: flex;
   gap: 4px;
   align-items: center;
 }
+
 .attr-icon-box {
   width: 26px;
   height: 26px;
@@ -802,33 +824,41 @@ watch(edgeId, (v) => emit('update:edge', v))
   overflow: hidden;
   background: #fff;
 }
+
 .attr-icon-box:hover {
   border-color: #409eff;
 }
+
 .attr-icon-img {
   width: 20px;
   height: 20px;
   object-fit: contain;
 }
+
 .attr-icon-text {
   font-size: 14px;
   line-height: 1;
 }
+
 .attr-icon {
   width: 52px;
   flex-shrink: 0;
 }
+
 .attr-name {
   flex: 1;
   min-width: 0;
 }
+
 .attr-value {
   flex: 1;
   min-width: 0;
 }
+
 .attr-desc {
   width: 100%;
 }
+
 .attr-main :deep(.el-input__inner) {
   font-size: 12px;
 }
@@ -838,6 +868,7 @@ watch(edgeId, (v) => emit('update:edge', v))
   margin-top: 6px;
   gap: 8px;
 }
+
 .attr-trace-block {
   display: flex;
   flex-direction: column;
@@ -847,6 +878,7 @@ watch(edgeId, (v) => emit('update:edge', v))
   border-radius: 6px;
   background: #fff;
 }
+
 .attr-trace-head {
   display: flex;
   align-items: center;
@@ -854,13 +886,16 @@ watch(edgeId, (v) => emit('update:edge', v))
   gap: 8px;
   font-weight: 600;
 }
+
 .attr-trace-name {
   color: #409eff;
 }
+
 .attr-trace-target {
   font-weight: 600;
   color: #e6a23c;
 }
+
 .attr-trace-total {
   font-size: 13px;
   font-weight: 600;
@@ -868,6 +903,7 @@ watch(edgeId, (v) => emit('update:edge', v))
   border-top: 1px dashed #dcdfe6;
   padding-top: 4px;
 }
+
 .attr-trace-ok {
   color: #67c23a;
   font-weight: 600;
