@@ -55,12 +55,14 @@ v-flow/
     │   ├── useCanvasShortcuts.ts  # 画布快捷键：Ctrl+A 全选、Ctrl+C/V 复制粘贴、Delete 删除、Esc 取消、Ctrl+S 保存
     │   ├── useContextMenu.ts      # 右键菜单状态（单例）：canvas / node 两种目标
     │   ├── useActionTypes.ts      # 加工动作池：内置 + 自定义（持久化 localStorage，随 JSON 导入/导出）
+    │   ├── useGroups.ts           # 分组管理（单例）：增删改分组及其预设属性，持久化 localStorage，随 JSON 导入/导出
     │   ├── useImageUpload.ts      # 图片上传：fileToDataURL / isImageIcon / fileBaseName；useImageUpload()（文件选择/拖拽，不再支持剪贴板粘贴）
     │   ├── useImagePreview.ts     # 图片放大预览状态（单例）
     │   └── useImageCrop.ts        # 图片裁剪状态控制（单例）：open(src) → Promise，由 ImageCropDialog 消费
     └── components/
-        ├── FormPanel.vue          # 配方录入表单（弹窗内）：输入物品数组 + 加工动作 + 输出产物；提交后自动生成节点与连线
-        ├── PropertyPanel.vue      # 画布内悬浮属性面板：编辑节点名称/图片/数量/单位/解释/属性、连线样式；配方追踪展示
+        ├── FormPanel.vue          # 配方录入表单（弹窗内）：输入物品数组 + 加工动作 + 输出产物；提交后自动生成节点与连线；每行可选分组、从分组复制属性；附加操作下拉动态同步画布
+        ├── PropertyPanel.vue      # 画布内悬浮属性面板：编辑节点名称/图片/数量/单位/解释/属性/分组、连线样式；配方追踪展示；物品节点可从所属分组复制属性
+        ├── GroupDrawer.vue        # 分组管理抽屉（从画布左侧滑入，画布置暗）：增删改分组及预设属性
         ├── ContextMenu.vue        # 自定义右键菜单
         ├── ImageCropDialog.vue    # 图片裁剪弹窗（cropperjs，按需异步加载）
         ├── ImagePreview.vue       # 图片放大预览遮罩
@@ -74,6 +76,7 @@ v-flow/
 ## 3. 架构与数据流
 
 ### 组合式函数模式（composables）
+
 - 所有业务逻辑集中在 `src/composables/`，组件保持"瘦"。
 - `composables/index.ts` 统一导出，组件只需一行 import 即可拿到所需函数与类型。
 - 多数 composable 使用**模块级单例状态**（在函数外定义 ref/reactive，如 `useImageCrop`、`useImagePreview`、`useContextMenu`、`useActionTypes`、`useRecipeGraph`、`useRecipeHighlight`），因此多处调用共享同一份状态。这意味着：
@@ -81,16 +84,20 @@ v-flow/
   - **图片上传流程**：选择/拖拽文件 → `useImageUpload.handleFile` → `fileToDataURL` → `useImageCrop.open` 弹裁剪窗 → 确认后写入目标 → 持久化。
 
 ### 数据流
+
 - `App.vue` 是编排中枢：工具栏按钮 → 打开 `FormPanel` / 触发导入导出 / 调整自动保存间隔。
 - `FormPanel` 提交 → `useRecipeGraph.addRecipeFromForm` → 批量创建 ItemNode / ActionNode / Edge → `persist()`。
 - 节点点击 → `useRecipeHighlight.highlightFromNode` → 高亮上游链；连线点击 → 选中并交给 `PropertyPanel` 编辑。
-- 持久化：`useRecipeGraph.persist` 把节点位置/连线/视图写入 localStorage（key `vflow_graph_data`）；自定义动作用 `vflow_action_types`；自动保存间隔用 `vflow_auto_save_interval`。
+- 持久化：`useRecipeGraph.persist` 把节点位置/连线/视图/分组写入 localStorage（key `vflow_graph_data`）；自定义动作用 `vflow_action_types`；分组用 `vflow_groups`；自动保存间隔用 `vflow_auto_save_interval`。
 
 ### 关键类型（见 `src/types.ts`）
+
 - `NodeKind = 'item' | 'action'`；`ItemNodeData` / `ActionNodeData` / `RecipeNodeData`。
 - `ItemAttribute`：`{ icon?, name, value, desc? }`（图标与说明非必选）。
-- `RecipeForm`：表单录入结构（inputs[]、action、outputs[]）。
-- `RecipeGraphData`：导入/导出 JSON 结构（version、actions、nodes、edges、viewport）。
+- `RecipeGroup`：`{ id, name, attributes? }`（用户自定义分组，可携带预设属性）。
+- `ItemNodeData` / `ActionNodeData` 均含 `groupIds?: string[]`（所属分组 id 列表，一个节点可归属多个分组）。
+- `RecipeForm`：表单录入结构（inputs[] 各含 groupIds、action、actionGroupIds、outputs[] 各含 groupIds）。
+- `RecipeGraphData`：导入/导出 JSON 结构（version、actions、groups、nodes、edges、viewport）。
 - 内置常量：`DEFAULT_ACTIONS=['合成','搅拌','切割','熔炼']`、`DEFAULT_UNIT='个'`、`DEFAULT_UNITS`、`DEFAULT_EXTRAS`。
 
 ---
@@ -109,6 +116,8 @@ v-flow/
 6. **样式相对路径**：`vite.config.ts` 的 `base: './'` 不可随意改回 `'/'`，否则子目录部署会资源 404。
 7. **避免文件膨胀**：新增逻辑优先放进 composables 或独立组件，主文件保持精简。
 8. **删除文件用 DeleteFile 工具**，不要用 shell；编辑用 Edit；搜索用 Glob/Grep/SearchCodebase。
+9. **分组功能**：一个节点可归属多个分组（`groupIds?: string[]`）。物品节点可从所属分组**复制属性为节点自有属性**（深拷贝，独立可编辑，之后改分组不影响已拷贝的节点属性）。加工节点加入分组**仅保留归属**（groupIds），不继承分组属性。分组列表随配方 JSON 一起导入/导出（`RecipeGraphData.groups`）。分组管理通过工具栏「🗂 分组」按钮打开 `GroupDrawer`（从画布左侧滑入，画布置暗）。
+10. **附加操作下拉动态同步**：`FormPanel` 与 `PropertyPanel` 的附加操作下拉选项由 `getExtraOptions()` 动态生成（内置 `DEFAULT_EXTRAS` + 画布上加工节点已使用的 `extra` 值 + 当前表单输入值），用户输入自定义附加操作后下拉列表自动更新。
 
 ---
 
@@ -136,5 +145,6 @@ pnpm exec vue-tsc --noEmit   # 仅类型检查
 - **改高亮交互** → `src/composables/useRecipeHighlight.ts`
 - **改图片上传/裁剪/预览** → `composables/useImageUpload.ts` / `useImageCrop.ts` / `useImagePreview.ts` + `components/ImageCropDialog.vue` / `ImagePreview.vue`
 - **改属性编辑/连线编辑面板** → `src/components/PropertyPanel.vue`
+- **改分组管理/分组属性** → `src/components/GroupDrawer.vue` + `src/composables/useGroups.ts`
 - **改工具栏/自动保存/顶层编排** → `src/App.vue`
 - **改类型/内置常量** → `src/types.ts`

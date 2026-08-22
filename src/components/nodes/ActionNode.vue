@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { useContextMenu, type ActionNodeData } from '../../composables'
+import { useContextMenu, useGroups, type ActionNodeData } from '../../composables'
 
 const props = defineProps<{
   id: string
@@ -9,6 +9,7 @@ const props = defineProps<{
 }>()
 
 const { open: openContextMenu } = useContextMenu()
+const { allGroups } = useGroups()
 
 const iconMap: Record<string, string> = {
   合成: '⚗️',
@@ -19,6 +20,14 @@ const iconMap: Record<string, string> = {
 
 const icon = computed(() => iconMap[props.data.action] ?? '⚙️')
 const hasImage = computed(() => !!props.data.image)
+/** 解析节点所属分组名称（加工节点仅保留归属，不继承分组属性） */
+const groupNames = computed(() => {
+  const ids = props.data.groupIds ?? []
+  if (!ids.length) return []
+  return allGroups()
+    .filter((g) => ids.includes(g.id))
+    .map((g) => g.name)
+})
 
 function onContextMenu(e: MouseEvent) {
   openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'action' })
@@ -31,6 +40,11 @@ function onContextMenu(e: MouseEvent) {
     <Handle type="target" :position="Position.Left" :connectable="true" />
 
     <span class="node-badge" title="加工动作节点">加工</span>
+
+    <!-- 分组标签（加工节点仅保留归属，不继承分组属性） -->
+    <div v-if="groupNames.length" class="node-groups">
+      <span v-for="name in groupNames" :key="name" class="group-tag">{{ name }}</span>
+    </div>
 
     <div class="action-body">
       <img v-if="hasImage" :src="data.image" class="action-img" :alt="data.label" />
@@ -138,5 +152,28 @@ function onContextMenu(e: MouseEvent) {
 .extra-icon {
   flex-shrink: 0;
   font-size: 10px;
+}
+
+/* 分组标签 */
+.node-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.group-tag {
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 16px;
+  color: #7c3aed;
+  background: #f3e8ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 8px;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

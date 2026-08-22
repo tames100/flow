@@ -11,6 +11,7 @@ import '@vue-flow/minimap/dist/style.css'
 
 import FormPanel from './components/FormPanel.vue'
 import PropertyPanel from './components/PropertyPanel.vue'
+import GroupDrawer from './components/GroupDrawer.vue'
 import ItemNode from './components/nodes/ItemNode.vue'
 import ActionNode from './components/nodes/ActionNode.vue'
 import ImagePreview from './components/ImagePreview.vue'
@@ -147,6 +148,7 @@ const selectedNodeId = ref<string | null>(null)
 const selectedEdgeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
 const formDialogVisible = ref(false)
+const groupDrawerVisible = ref(false)
 
 // ---- 顶部工具栏：全局搜索节点 ----
 const searchNodeId = ref<string | null>(null)
@@ -442,18 +444,12 @@ const shortcutsList = [
     <header class="toolbar">
       <span class="brand">🎮 游戏配方可视化编辑器</span>
       <div class="tool-actions">
-        <el-select
-          v-model="searchNodeId"
-          placeholder="🔍 搜索节点"
-          filterable
-          clearable
-          size="small"
-          class="node-search"
-          @change="onSearchSelect"
-        >
+        <el-select v-model="searchNodeId" placeholder="🔍 搜索节点" filterable clearable size="small" class="node-search"
+          @change="onSearchSelect">
           <el-option v-for="o in searchOptions" :key="o.id" :value="o.id" :label="o.label">
             <span style="display: flex; align-items: center; gap: 6px">
-              <el-tag size="small" :type="o.kind === 'action' ? 'warning' : 'primary'" style="width: 34px; text-align: center">
+              <el-tag size="small" :type="o.kind === 'action' ? 'warning' : 'primary'"
+                style="width: 34px; text-align: center">
                 {{ o.kind === 'action' ? '加工' : '物品' }}
               </el-tag>
               <span>{{ o.label }}</span>
@@ -461,6 +457,7 @@ const shortcutsList = [
           </el-option>
         </el-select>
         <el-button size="small" type="primary" @click="onAddRecipe">+ 添加配方</el-button>
+        <el-button size="small" @click="groupDrawerVisible = true">🗂 分组</el-button>
         <el-button size="small" type="primary" @click="onSaveState">💾 保存画布状态</el-button>
         <el-button size="small" @click="onExportFile">导出 JSON</el-button>
         <el-button size="small" @click="onImportClick">导入 JSON</el-button>
@@ -504,6 +501,9 @@ const shortcutsList = [
 
     <!-- 全局图片裁剪弹窗（上传图片时先裁剪再写入节点，按需渲染） -->
     <ImageCropDialog v-if="crop.state.visible" />
+
+    <!-- 分组管理抽屉（从画布左侧滑入，画布置暗） -->
+    <GroupDrawer v-model="groupDrawerVisible" />
 
     <!-- 自定义右键菜单 -->
     <ContextMenu @create-item="onCtxCreateItem" @create-action="onCtxCreateAction" @edit="onCtxEdit"
@@ -602,6 +602,7 @@ const shortcutsList = [
 .node-search {
   width: 180px;
 }
+
 .node-search :deep(.el-select__wrapper) {
   background: #fff;
 }
@@ -693,11 +694,13 @@ const shortcutsList = [
   background: #f5f7fa;
   margin-bottom: 10px;
 }
+
 .source-name {
   font-size: 14px;
   font-weight: 700;
   color: #303133;
 }
+
 .source-desc {
   margin-top: 4px;
   font-size: 12px;
@@ -706,17 +709,20 @@ const shortcutsList = [
   white-space: pre-wrap;
   word-break: break-all;
 }
+
 .source-count {
   margin-top: 4px;
   font-size: 12px;
   color: #606266;
 }
+
 .source-list {
   margin-top: 10px;
   padding: 4px 8px;
   border: 1px solid #ebeef5;
   border-radius: 6px;
 }
+
 .source-item {
   display: flex;
   align-items: center;
@@ -724,10 +730,12 @@ const shortcutsList = [
   margin-right: 0;
   padding: 4px 0;
 }
+
 .source-item-name {
   font-size: 13px;
   color: #303133;
 }
+
 .source-item-cat {
   margin-left: 8px;
   font-size: 12px;

@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import {
   useRecipeGraph,
   useActionTypes,
+  useGroups,
   useImageUpload,
   useImageCrop,
   fileToDataURL,
@@ -15,12 +16,13 @@ import { DEFAULT_EXTRAS, DEFAULT_UNIT, DEFAULT_UNITS } from '../types'
 
 const { addRecipeFromForm, detectCycle, getItemNodes, getActionNodes } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
+const { allGroups } = useGroups()
 const { open: openCrop } = useImageCrop()
 
 const emit = defineEmits<{ submitted: [] }>()
 
 const form = reactive<RecipeForm>({
-  inputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [] }],
+  inputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }],
   action: '合成',
   actionImage: '',
   actionDescription: '',
@@ -28,7 +30,8 @@ const form = reactive<RecipeForm>({
   actionOutputUnit: DEFAULT_UNIT,
   actionRefId: undefined,
   reuseActionImage: true,
-  outputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [] }],
+  actionGroupIds: [],
+  outputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }],
 })
 
 /** 属性编辑区展开状态：`in${idx}` / `out${idx}` */
@@ -41,6 +44,109 @@ function toggleAttrArea(key: string) {
 /** 确保属性数组存在 */
 function ensureAttrs(arr: { attributes?: ItemAttribute[] }) {
   if (!arr.attributes) arr.attributes = []
+}
+
+/** 收集「可选的附加操作」：内置默认项 + 画布上所有加工节点已使用的值（用户输入自定义后同步更新） */
+function getExtraOptions(): string[] {
+  const set = new Set<string>(DEFAULT_EXTRAS)
+  getActionNodes().forEach((n) => {
+    if (n.extra) set.add(n.extra)
+  })
+  // 若用户已在表单中输入自定义值，一并纳入
+  if (form.actionExtra) set.add(form.actionExtra)
+  return [...set]
+}
+
+/** 收集该行所属分组的全部属性（用于「从分组复制属性」下拉） */
+function attrsFromGroupIds(groupIds: string[] | undefined): ItemAttribute[] {
+  if (!groupIds || !groupIds.length) return []
+  const result: ItemAttribute[] = []
+  groupIds.forEach((gid) => {
+    const g = allGroups().find((x) => x.id === gid)
+    if (g?.attributes) result.push(...g.attributes)
+  })
+  return result
+}
+
+/** 从分组复制一条属性到该行（深拷贝，独立可编辑） */
+function copyAttrFromGroup(target: { attributes?: ItemAttribute[] }, attr: ItemAttribute) {
+  ensureAttrs(target)
+  target.attributes!.push(JSON.parse(JSON.stringify(attr)))
+  ElMessage.success('已从分组复制属性到节点')
+}
+
+/** 输入行：从分组复制属性（el-select @change 回调） */
+function onCopyInputAttr(idx: number, v: string) {
+  const a = attrsFromGroupIds(form.inputs[idx].groupIds).find(
+    (x) => x.name === v || String(x.value) === v,
+  )
+  if (a) copyAttrFromGroup(form.inputs[idx], a)
+}
+
+/** 输出行：从分组复制属性（el-select @change 回调） */
+function onCopyOutputAttr(idx: number, v: string) {
+  const a = attrsFromGroupIds(form.outputs[idx].groupIds).find(
+    (x) => x.name === v || String(x.value) === v,
+  )
+  if (a) copyAttrFromGroup(form.outputs[idx], a)
+}
+
+/**
+ * 选择分组变更后，检查新增分组中是否存在节点尚未拥有的属性，
+ * 若有则提示用户是否将这些属性复制到本节点（深拷贝，独立可编辑）。
+ */
+function onInputGroupChange(idx: number, newIds: string[]) {
+  const inp = form.inputs[idx]
+  const oldIds = inp.groupIds ?? []
+  inp.groupIds = newIds
+  promptCopyMissingAttrs(inp, oldIds, newIds)
+}
+
+function onOutputGroupChange(idx: number, newIds: string[]) {
+  const out = form.outputs[idx]
+  const oldIds = out.groupIds ?? []
+  out.groupIds = newIds
+  promptCopyMissingAttrs(out, oldIds, newIds)
+}
+
+/** 通用：对比新旧分组 id，找出新增分组中节点缺失的属性并提示复制 */
+function promptCopyMissingAttrs(
+  target: { attributes?: ItemAttribute[]; name?: string },
+  oldIds: string[],
+  newIds: string[],
+) {
+  const addedIds = newIds.filter((id) => !oldIds.includes(id))
+  if (!addedIds.length) return
+  const existingNames = new Set((target.attributes ?? []).map((a) => a.name))
+  const missing: { attr: ItemAttribute; groupName: string }[] = []
+  addedIds.forEach((gid) => {
+    const g = allGroups().find((x) => x.id === gid)
+    if (!g?.attributes) return
+    g.attributes.forEach((a) => {
+      if (a.name && !existingNames.has(a.name)) {
+        missing.push({ attr: a, groupName: g.name })
+      }
+    })
+  })
+  if (!missing.length) return
+  const attrList = missing.map((m) => m.attr.name).join('、')
+  const groupList = [...new Set(missing.map((m) => m.groupName))].join('、')
+  ElMessageBox.confirm(
+    `所选分组「${groupList}」包含本节点尚不存在的属性：${attrList}。是否将这些属性复制到本节点？`,
+    '从分组复制属性',
+    { confirmButtonText: '复制', cancelButtonText: '跳过', type: 'info' },
+  )
+    .then(() => {
+      ensureAttrs(target)
+      missing.forEach((m) => target.attributes!.push(JSON.parse(JSON.stringify(m.attr))))
+      ElMessage.success(`已复制 ${missing.length} 个属性`)
+    })
+    .catch(() => { })
+}
+
+/** 分组多选下拉所需选项 */
+function groupOptions() {
+  return allGroups().map((g) => ({ id: g.id, name: g.name }))
 }
 
 function addInputAttr(idx: number) {
@@ -203,7 +309,7 @@ async function onDrop(target: string, e: DragEvent) {
 }
 
 function addInputRow() {
-  form.inputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [] })
+  form.inputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] })
 }
 
 function removeInputRow(idx: number) {
@@ -215,7 +321,7 @@ function removeInputRow(idx: number) {
 }
 
 function addOutputRow() {
-  form.outputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [] })
+  form.outputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] })
 }
 
 function removeOutputRow(idx: number) {
@@ -294,6 +400,7 @@ function submit() {
       refId: i.refId,
       description: i.description ?? '',
       attributes: cleanAttrs(i.attributes),
+      groupIds: i.groupIds ?? [],
     })),
     action: form.action,
     actionImage: form.actionImage,
@@ -302,12 +409,14 @@ function submit() {
     actionOutputUnit: form.actionOutputUnit,
     actionRefId: form.actionRefId,
     reuseActionImage: form.reuseActionImage,
+    actionGroupIds: form.actionGroupIds ?? [],
     outputs: validOutputs.map((o) => ({
       name: o.name.trim(),
       image: o.image,
       quantity: o.quantity,
       description: o.description ?? '',
       attributes: cleanAttrs(o.attributes),
+      groupIds: o.groupIds ?? [],
     })),
   })
 
@@ -327,14 +436,15 @@ function submit() {
   emit('submitted')
 
   // 重置表单（各保留一行）
-  form.inputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [] }]
-  form.outputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [] }]
+  form.inputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }]
+  form.outputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }]
   form.actionImage = ''
   form.actionDescription = ''
   form.actionExtra = ''
   form.actionOutputUnit = DEFAULT_UNIT
   form.actionRefId = undefined
   form.reuseActionImage = true
+  form.actionGroupIds = []
   pasteTarget.value = 'out0'
   outputUpload.reset()
   actionUpload.reset()
@@ -370,6 +480,15 @@ function submit() {
             </div>
             <el-input v-model="inp.description" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }"
               placeholder="输入解释（可选，展示在节点上）" class="desc-input" @focus="pasteTarget = `in${idx}`" />
+            <!-- 分组归属（一个物品可归属多个分组） -->
+            <div class="group-row">
+              <span class="qty-label">分组</span>
+              <el-select :model-value="inp.groupIds" multiple filterable default-first-option clearable size="small"
+                style="flex: 1" placeholder="选择分组（在「分组」管理中创建）"
+                @update:model-value="(v: string[]) => onInputGroupChange(idx, v)">
+                <el-option v-for="g in groupOptions()" :key="g.id" :label="g.name" :value="g.id" />
+              </el-select>
+            </div>
             <!-- 物品属性（可折叠）：图标 + 名称 + 值 + 说明 -->
             <div class="attr-block">
               <div class="attr-toggle" @click="toggleAttrArea(`in${idx}`)">
@@ -389,6 +508,14 @@ function submit() {
                     <el-button link type="danger" size="small" @click="removeInputAttr(idx, aidx)">删</el-button>
                   </div>
                   <el-input v-model="a.desc" placeholder="说明（可选）" size="small" class="attr-desc" />
+                </div>
+                <div v-if="attrsFromGroupIds(inp.groupIds).length" class="group-attr-copy">
+                  <el-select placeholder="从分组复制属性到本节点" size="small" clearable style="width: 100%"
+                    @change="(v: string) => onCopyInputAttr(idx, v)">
+                    <el-option v-for="(ga, gi) in attrsFromGroupIds(inp.groupIds)" :key="gi"
+                      :label="`${ga.name}${ga.value !== '' ? '：' + ga.value : ''}`"
+                      :value="ga.name || String(ga.value)" />
+                  </el-select>
                 </div>
                 <el-button text type="primary" size="small" @click="addInputAttr(idx)">+ 添加属性</el-button>
               </div>
@@ -439,7 +566,14 @@ function submit() {
             <span class="qty-label">附加操作</span>
             <el-select v-model="form.actionExtra" filterable allow-create default-first-option clearable size="small"
               style="flex: 1" placeholder="选择或自定义，如：需要加热">
-              <el-option v-for="x in DEFAULT_EXTRAS" :key="x" :label="x" :value="x" />
+              <el-option v-for="x in getExtraOptions()" :key="x" :label="x" :value="x" />
+            </el-select>
+          </div>
+          <div class="group-row" style="margin-top: 6px">
+            <span class="qty-label">分组</span>
+            <el-select v-model="form.actionGroupIds" multiple filterable default-first-option clearable size="small"
+              style="flex: 1" placeholder="选择分组（加工节点仅保留归属）">
+              <el-option v-for="g in groupOptions()" :key="g.id" :label="g.name" :value="g.id" />
             </el-select>
           </div>
           <div class="name-quantity" style="margin-top: 6px">
@@ -463,6 +597,15 @@ function submit() {
             </div>
             <el-input v-model="out.description" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }"
               placeholder="产物解释（可选，展示在节点上）" class="desc-input" style="margin-top: 6px" />
+            <!-- 分组归属（一个产物可归属多个分组） -->
+            <div class="group-row" style="margin-top: 6px">
+              <span class="qty-label">分组</span>
+              <el-select :model-value="out.groupIds" multiple filterable default-first-option clearable size="small"
+                style="flex: 1" placeholder="选择分组（在「分组」管理中创建）"
+                @update:model-value="(v: string[]) => onOutputGroupChange(idx, v)">
+                <el-option v-for="g in groupOptions()" :key="g.id" :label="g.name" :value="g.id" />
+              </el-select>
+            </div>
             <!-- 产物属性（可折叠）：图标 + 名称 + 值 + 说明 -->
             <div class="attr-block" style="margin-top: 6px">
               <div class="attr-toggle" @click="toggleAttrArea(`out${idx}`)">
@@ -482,6 +625,14 @@ function submit() {
                     <el-button link type="danger" size="small" @click="removeOutputAttr(idx, aidx)">删</el-button>
                   </div>
                   <el-input v-model="a.desc" placeholder="说明（可选）" size="small" class="attr-desc" />
+                </div>
+                <div v-if="attrsFromGroupIds(out.groupIds).length" class="group-attr-copy">
+                  <el-select placeholder="从分组复制属性到本节点" size="small" clearable style="width: 100%"
+                    @change="(v: string) => onCopyOutputAttr(idx, v)">
+                    <el-option v-for="(ga, gi) in attrsFromGroupIds(out.groupIds)" :key="gi"
+                      :label="`${ga.name}${ga.value !== '' ? '：' + ga.value : ''}`"
+                      :value="ga.name || String(ga.value)" />
+                  </el-select>
                 </div>
                 <el-button text type="primary" size="small" @click="addOutputAttr(idx)">+ 添加属性</el-button>
               </div>
@@ -541,6 +692,20 @@ function submit() {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.group-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-attr-copy {
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px dashed #b3d8ff;
+  border-radius: 4px;
+  background: #f0f9ff;
 }
 
 .qty-label {

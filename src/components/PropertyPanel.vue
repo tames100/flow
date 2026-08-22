@@ -4,6 +4,7 @@ import { useVueFlow, MarkerType } from '@vue-flow/core'
 import {
   useRecipeGraph,
   useActionTypes,
+  useGroups,
   useImagePreview,
   useImageCrop,
   fileToDataURL,
@@ -26,6 +27,7 @@ const {
   syncUnitFromAction,
 } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
+const { allGroups } = useGroups()
 const { openImage } = useImagePreview()
 const { open: openCrop } = useImageCrop()
 
@@ -130,6 +132,85 @@ function getExtraOptions(): string[] {
     if (e) set.add(e)
   })
   return [...set]
+}
+
+/** 节点所属分组 id 列表（物品 / 加工节点通用；加工节点仅保留归属，不继承分组属性） */
+const groupIds = computed<string[]>({
+  get: () => (node.value?.data as any)?.groupIds ?? [],
+  set: (v: string[]) => {
+    if (node.value) {
+      updateNode(node.value.id, {
+        data: { ...node.value.data, groupIds: v.length ? v : undefined },
+      })
+      persist()
+    }
+  },
+})
+
+/** 分组多选下拉所需选项 */
+function groupOptions() {
+  return allGroups().map((g) => ({ id: g.id, name: g.name }))
+}
+
+/** 收集当前节点所属分组的全部属性（用于「从分组复制属性」下拉） */
+function attrsFromGroups(): ItemAttribute[] {
+  const gids = (node.value?.data as any)?.groupIds as string[] | undefined
+  if (!gids || !gids.length) return []
+  const result: ItemAttribute[] = []
+  gids.forEach((gid) => {
+    const g = allGroups().find((x) => x.id === gid)
+    if (g?.attributes) result.push(...g.attributes)
+  })
+  return result
+}
+
+/** 从分组复制一条属性到节点（深拷贝，独立可编辑，之后改分组不影响已拷贝的节点属性） */
+function copyAttrFromGroup(attr: ItemAttribute) {
+  attrs.value.push(JSON.parse(JSON.stringify(attr)))
+  saveAttrs()
+  ElMessage.success('已从分组复制属性到节点')
+}
+
+/** 从分组复制属性（el-select @change 回调） */
+function onCopyAttrFromGroup(v: string) {
+  const a = attrsFromGroups().find((x) => x.name === v || String(x.value) === v)
+  if (a) copyAttrFromGroup(a)
+}
+
+/**
+ * 选择分组变更后，检查新增分组中是否存在节点尚未拥有的属性，
+ * 若有则提示用户是否将这些属性复制到本节点（深拷贝，独立可编辑）。
+ */
+function onGroupIdsChange(newIds: string[]) {
+  const oldIds = groupIds.value
+  groupIds.value = newIds
+  const addedIds = newIds.filter((id) => !oldIds.includes(id))
+  if (!addedIds.length) return
+  const existingNames = new Set(attrs.value.map((a) => a.name))
+  const missing: { attr: ItemAttribute; groupName: string }[] = []
+  addedIds.forEach((gid) => {
+    const g = allGroups().find((x) => x.id === gid)
+    if (!g?.attributes) return
+    g.attributes.forEach((a) => {
+      if (a.name && !existingNames.has(a.name)) {
+        missing.push({ attr: a, groupName: g.name })
+      }
+    })
+  })
+  if (!missing.length) return
+  const attrList = missing.map((m) => m.attr.name).join('、')
+  const groupList = [...new Set(missing.map((m) => m.groupName))].join('、')
+  ElMessageBox.confirm(
+    `所选分组「${groupList}」包含本节点尚不存在的属性：${attrList}。是否将这些属性复制到本节点？`,
+    '从分组复制属性',
+    { confirmButtonText: '复制', cancelButtonText: '跳过', type: 'info' },
+  )
+    .then(() => {
+      missing.forEach((m) => attrs.value.push(JSON.parse(JSON.stringify(m.attr))))
+      saveAttrs()
+      ElMessage.success(`已复制 ${missing.length} 个属性`)
+    })
+    .catch(() => { })
 }
 
 const image = computed(() => (node.value?.data as any)?.image ?? '')
@@ -547,6 +628,15 @@ watch(edgeId, (v) => emit('update:edge', v))
             placeholder="节点解释（展示在节点上）" />
         </el-form-item>
 
+        <el-form-item label="分组">
+          <el-select :model-value="groupIds" multiple filterable default-first-option clearable
+            placeholder="选择分组（在「分组」管理中创建）" style="width: 100%"
+            @update:model-value="(v: string[]) => onGroupIdsChange(v)">
+            <el-option v-for="g in groupOptions()" :key="g.id" :label="g.name" :value="g.id" />
+          </el-select>
+          <div v-if="isAction" class="qty-tip">加工节点仅保留分组归属，不继承分组属性</div>
+        </el-form-item>
+
         <template v-if="isItem">
           <el-form-item label="显示文字">
             <el-switch v-model="showLabel" active-text="图片+文字" inactive-text="仅图片" />
@@ -580,6 +670,14 @@ watch(edgeId, (v) => emit('update:edge', v))
             </div>
             <el-input v-model="a.desc" placeholder="说明（可选）" size="small" class="attr-desc"
               @update:model-value="saveAttrs" />
+          </div>
+          <!-- 从所属分组复制属性：深拷贝为节点自有属性，独立可编辑 -->
+          <div v-if="attrsFromGroups().length" class="group-attr-copy">
+            <el-select placeholder="从分组复制属性到本节点" size="small" clearable style="width: 100%"
+              @change="(v: string) => onCopyAttrFromGroup(v)">
+              <el-option v-for="(ga, gi) in attrsFromGroups()" :key="gi"
+                :label="`${ga.name}${ga.value !== '' ? '：' + ga.value : ''}`" :value="ga.name || String(ga.value)" />
+            </el-select>
           </div>
           <el-button text type="primary" size="small" @click="addAttr">+ 添加属性</el-button>
           <input ref="attrIconFileInput" type="file" accept="image/*" style="display: none"
@@ -861,6 +959,15 @@ watch(edgeId, (v) => emit('update:edge', v))
 
 .attr-main :deep(.el-input__inner) {
   font-size: 12px;
+}
+
+/* 从分组复制属性下拉区 */
+.group-attr-copy {
+  margin: 6px 0;
+  padding: 6px;
+  border: 1px dashed #b3d8ff;
+  border-radius: 6px;
+  background: #f0f9ff;
 }
 
 /* 属性追踪结果 */

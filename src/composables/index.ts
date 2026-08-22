@@ -4,16 +4,17 @@
  * 各组件只需 `import { useRecipeGraph, ... } from '../composables'`，
  * 即可避免重复书写大量 import 语句。
  */
-export * from './useRecipeGraph'
-export * from './useRecipeHighlight'
-export * from './useCanvasShortcuts'
-export * from './useContextMenu'
-export * from './useActionTypes'
-export * from './useImageUpload'
-export * from './useImagePreview'
-export * from './useImageCrop'
+export * from "./useRecipeGraph";
+export * from "./useRecipeHighlight";
+export * from "./useCanvasShortcuts";
+export * from "./useContextMenu";
+export * from "./useActionTypes";
+export * from "./useGroups";
+export * from "./useImageUpload";
+export * from "./useImagePreview";
+export * from "./useImageCrop";
 
-export { DEFAULT_ACTIONS } from '../types'
+export { DEFAULT_ACTIONS } from "../types";
 export type {
   NodeKind,
   ItemAttribute,
@@ -24,4 +25,5 @@ export type {
   RecipeEdge,
   RecipeForm,
   RecipeGraphData,
-} from '../types'
+  RecipeGroup,
+} from "../types";

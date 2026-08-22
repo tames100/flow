@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { useContextMenu, isImageIcon, type ItemNodeData } from '../../composables'
+import { useContextMenu, useGroups, isImageIcon, type ItemNodeData } from '../../composables'
 
 const props = defineProps<{
   id: string
@@ -9,6 +9,7 @@ const props = defineProps<{
 }>()
 
 const { open: openContextMenu } = useContextMenu()
+const { allGroups } = useGroups()
 
 const hasImage = computed(() => !!props.data.image)
 const displayName = computed(() => props.data.label || '未命名物品')
@@ -18,6 +19,14 @@ const displayAttrs = computed(() =>
     (a) => (a.name ?? '').trim() || String(a.value ?? '').trim(),
   ),
 )
+/** 解析节点所属分组名称（渲染时自动忽略已删除的无效 id） */
+const groupNames = computed(() => {
+  const ids = props.data.groupIds ?? []
+  if (!ids.length) return []
+  return allGroups()
+    .filter((g) => ids.includes(g.id))
+    .map((g) => g.name)
+})
 
 function onContextMenu(e: MouseEvent) {
   openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'item' })
@@ -25,15 +34,16 @@ function onContextMenu(e: MouseEvent) {
 </script>
 
 <template>
-  <div
-    class="item-node"
-    :class="{ 'no-label': !data.showLabel }"
-    @contextmenu="onContextMenu"
-  >
+  <div class="item-node" :class="{ 'no-label': !data.showLabel }" @contextmenu="onContextMenu">
     <!-- 输入连接点（物品作为原料时位于左侧） -->
     <Handle type="target" :position="Position.Left" :connectable="true" />
 
     <span class="node-badge" title="物品节点（原料 / 产物）">物品</span>
+
+    <!-- 分组标签（一个节点可归属多个分组） -->
+    <div v-if="groupNames.length" class="node-groups">
+      <span v-for="name in groupNames" :key="name" class="group-tag">{{ name }}</span>
+    </div>
 
     <div class="item-content">
       <div class="item-img-box">
@@ -149,6 +159,7 @@ function onContextMenu(e: MouseEvent) {
   margin-top: 4px;
   max-width: 170px;
 }
+
 .node-attr {
   display: flex;
   align-items: center;
@@ -164,15 +175,18 @@ function onContextMenu(e: MouseEvent) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .node-attr .attr-icon {
   font-size: 12px;
 }
+
 .node-attr .attr-icon-img {
   width: 14px;
   height: 14px;
   object-fit: contain;
   flex-shrink: 0;
 }
+
 .node-attr .attr-text {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -180,5 +194,28 @@ function onContextMenu(e: MouseEvent) {
 
 .item-node.no-label {
   padding: 6px;
+}
+
+/* 分组标签 */
+.node-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.group-tag {
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 16px;
+  color: #7c3aed;
+  background: #f3e8ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 8px;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
