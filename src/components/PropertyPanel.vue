@@ -704,8 +704,8 @@ watch(edgeId, (v) => emit('update:edge', v))
           <div v-if="isBasicSelf" class="trace-result">
             <div class="trace-row">
               <span class="trace-name">{{ label }}</span>
-              <span class="trace-qty">× {{ traceQty }}{{ traceMaterials[0].unit ? ' ' + traceMaterials[0].unit : ''
-              }}</span>
+              <span class="trace-qty">× {{ traceQty }}{{ traceMaterials[0].unit ? ' ' + traceMaterials[0].unit :
+                '' }}</span>
             </div>
             <div class="qty-tip">该产物本身就是基本原料，无上游加工链。</div>
           </div>
@@ -729,7 +729,7 @@ watch(edgeId, (v) => emit('update:edge', v))
               <div class="attr-trace-head">
                 <span class="attr-trace-name">{{ t.name }}</span>
                 <span v-if="t.targetAttr" class="attr-trace-target">
-                  {{ label }}：{{ t.name }} {{ t.targetAttr.value }}
+                  {{ label }}：{{ t.targetAttr.value }}
                 </span>
               </div>
               <div v-if="t.items.length">
@@ -737,7 +737,7 @@ watch(edgeId, (v) => emit('update:edge', v))
                   <span class="trace-name" :title="it.name">{{ it.name }}</span>
                   <span class="trace-qty">
                     <template v-if="it.attr">
-                      {{ it.attr.icon ? it.attr.icon + ' ' : '' }}{{ it.attr.value }} × {{ it.qty }} = {{
+                      {{ it.attr.value }} × {{ it.qty }} = {{
                         it.contribution ?? '无法计算' }}
                     </template>
                     <template v-else>无该属性</template>
