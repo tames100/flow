@@ -22,7 +22,7 @@ const { open: openCrop } = useImageCrop()
 const emit = defineEmits<{ submitted: [] }>()
 
 const form = reactive<RecipeForm>({
-  inputs: [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }],
+  inputs: [{ name: '', image: '', quantity: 1, unit: DEFAULT_UNIT, description: '', attributes: [], groupIds: [] }],
   action: '合成',
   actionImage: '',
   actionDescription: '',
@@ -309,7 +309,7 @@ async function onDrop(target: string, e: DragEvent) {
 }
 
 function addInputRow() {
-  form.inputs.push({ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] })
+  form.inputs.push({ name: '', image: '', quantity: 1, unit: DEFAULT_UNIT, description: '', attributes: [], groupIds: [] })
 }
 
 function removeInputRow(idx: number) {
@@ -398,6 +398,8 @@ function submit() {
       name: i.name.trim(),
       image: i.image,
       refId: i.refId,
+      quantity: i.quantity,
+      unit: i.unit,
       description: i.description ?? '',
       attributes: cleanAttrs(i.attributes),
       groupIds: i.groupIds ?? [],
@@ -436,7 +438,7 @@ function submit() {
   emit('submitted')
 
   // 重置表单（各保留一行）
-  form.inputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }]
+  form.inputs = [{ name: '', image: '', quantity: 1, unit: DEFAULT_UNIT, description: '', attributes: [], groupIds: [] }]
   form.outputs = [{ name: '', image: '', quantity: 1, description: '', attributes: [], groupIds: [] }]
   form.actionImage = ''
   form.actionDescription = ''
@@ -477,6 +479,10 @@ function submit() {
               <el-input v-model="inp.name" placeholder="或手动输入物品名称" clearable @focus="pasteTarget = `in${idx}`" />
               <el-input-number v-model="inp.quantity" :min="1" :max="9999" size="small" controls-position="right"
                 class="qty-input" />
+              <el-select v-model="inp.unit" filterable allow-create default-first-option size="small"
+                class="unit-select" placeholder="单位">
+                <el-option v-for="u in DEFAULT_UNITS" :key="u" :label="u" :value="u" />
+              </el-select>
             </div>
             <el-input v-model="inp.description" type="textarea" :autosize="{ minRows: 1, maxRows: 4 }"
               placeholder="输入解释（可选，展示在节点上）" class="desc-input" @focus="pasteTarget = `in${idx}`" />
@@ -716,6 +722,11 @@ function submit() {
 
 .qty-input {
   width: 100px;
+  flex-shrink: 0;
+}
+
+.unit-select {
+  width: 72px;
   flex-shrink: 0;
 }
 

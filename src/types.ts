@@ -107,6 +107,8 @@ export interface RecipeForm {
     name: string;
     image?: string;
     quantity?: number;
+    /** 输入物品单位（默认「个」，可自定义如 ml / kg） */
+    unit?: string;
     /** 输入物品解释 */
     description?: string;
     /** 输入物品属性（图标 + 名称 + 值 + 说明，图标与说明非必选） */

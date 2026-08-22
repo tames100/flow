@@ -412,9 +412,10 @@ export function useRecipeGraph() {
     const actionOutUnit = (actionNode.data as any)?.outputUnit || DEFAULT_UNIT;
 
     const newEdges: RecipeEdge[] = [
-      // 输入边：单位遵循继承规则（基本原料默认「个」）
-      ...inputSources.map((s) => {
-        const unit = resolveUnit(s.node.id, actionNode.id);
+      // 输入边：单位优先用表单指定值，否则遵循继承规则（基本原料默认「个」）
+      ...inputSources.map((s, i) => {
+        const formUnit = form.inputs[i]?.unit;
+        const unit = formUnit || resolveUnit(s.node.id, actionNode.id);
         return {
           id: genId("e"),
           source: s.node.id,
