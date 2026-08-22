@@ -1,6 +1,8 @@
 import { ref } from "vue";
 import { useVueFlow, MarkerType } from "@vue-flow/core";
 import type {
+  ActionNodeData,
+  ItemNodeData,
   ItemAttribute,
   MaterialDemand,
   RecipeEdge,
@@ -549,16 +551,16 @@ export function useRecipeGraph() {
       inputs: inputs.length
         ? inputs
         : [
-            {
-              name: "",
-              image: "",
-              quantity: 1,
-              unit: DEFAULT_UNIT,
-              description: "",
-              attributes: [],
-              groupIds: [],
-            },
-          ],
+          {
+            name: "",
+            image: "",
+            quantity: 1,
+            unit: DEFAULT_UNIT,
+            description: "",
+            attributes: [],
+            groupIds: [],
+          },
+        ],
       action: aData.action ?? aData.label ?? "",
       actionImage: aData.image ?? "",
       actionDescription: aData.description ?? "",
@@ -570,15 +572,15 @@ export function useRecipeGraph() {
       outputs: outputs.length
         ? outputs
         : [
-            {
-              name: "",
-              image: "",
-              quantity: 1,
-              description: "",
-              attributes: [],
-              groupIds: [],
-            },
-          ],
+          {
+            name: "",
+            image: "",
+            quantity: 1,
+            description: "",
+            attributes: [],
+            groupIds: [],
+          },
+        ],
     };
   }
 
@@ -625,8 +627,8 @@ export function useRecipeGraph() {
               description: inp.description ?? undefined,
               attributes: inp.attributes?.length
                 ? (JSON.parse(
-                    JSON.stringify(inp.attributes),
-                  ) as ItemAttribute[])
+                  JSON.stringify(inp.attributes),
+                ) as ItemAttribute[])
                 : undefined,
               groupIds: inp.groupIds?.length ? [...inp.groupIds] : undefined,
             } as ItemNodeData,
@@ -674,8 +676,8 @@ export function useRecipeGraph() {
               description: out.description ?? undefined,
               attributes: out.attributes?.length
                 ? (JSON.parse(
-                    JSON.stringify(out.attributes),
-                  ) as ItemAttribute[])
+                  JSON.stringify(out.attributes),
+                ) as ItemAttribute[])
                 : undefined,
               groupIds: out.groupIds?.length ? [...out.groupIds] : undefined,
             } as ItemNodeData,
