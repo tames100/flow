@@ -1,17 +1,37 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useGroups, fileToDataURL, isImageIcon, type ItemAttribute } from '../composables'
+import { useGroups, useRecipeGraph, fileToDataURL, isImageIcon, type ItemAttribute } from '../composables'
 
 /**
  * GroupDrawer —— 分组管理抽屉（从画布左侧滑入，画布置暗遮罩）。
  * 支持新增 / 改名 / 删除分组，以及为分组增删改预设属性（图标 + 名称 + 值 + 说明）。
  * 物品节点选择某分组的属性后会复制为节点自有属性，独立可编辑。
+ * 分组属性图标 / 名称变更时，自动同步到该分组下所有节点的对应属性（仅 icon + name）。
  */
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
 
 const { groups, allGroups, addGroup, updateGroup, removeGroup, addAttr, removeAttr, updateAttr } =
   useGroups()
+const { syncGroupAttrToNodes } = useRecipeGraph()
+
+/**
+ * 修改分组属性后，若 icon 或 name 变更，同步到该分组下所有节点的对应属性。
+ * 匹配方式：节点属性 name === 旧名称（用户手动改过名的不同步）。
+ */
+function onAttrChange(gid: string, idx: number, patch: Partial<ItemAttribute>) {
+  const g = groups.value.find((x) => x.id === gid)
+  const old = g?.attributes?.[idx]
+  if (!old) return
+  const oldName = old.name
+  const oldIcon = old.icon ?? ''
+  updateAttr(gid, idx, patch)
+  if ('icon' in patch || 'name' in patch) {
+    const newIcon = 'icon' in patch ? (patch.icon ?? '') : oldIcon
+    const newName = 'name' in patch ? (patch.name ?? oldName) : oldName
+    syncGroupAttrToNodes(gid, oldName, newIcon, newName)
+  }
+}
 
 /** 抽屉关闭时同步父组件状态 */
 function onClose(v: boolean) {
@@ -55,7 +75,7 @@ async function onAttrIconFileChange(e: Event) {
   if (!f || !attrIconTarget.value) return
   try {
     const dataUrl = await fileToDataURL(f)
-    updateAttr(attrIconTarget.value.gid, attrIconTarget.value.idx, { icon: dataUrl })
+    onAttrChange(attrIconTarget.value.gid, attrIconTarget.value.idx, { icon: dataUrl })
   } catch (err: any) {
     ElMessage.warning(err?.message ?? '图片读取失败')
   }
@@ -100,9 +120,9 @@ function groupAttrs(g: { attributes?: ItemAttribute[] }): ItemAttribute[] {
                   <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
                 </span>
                 <el-input :model-value="a.icon" placeholder="图标/emoji" size="small" class="attr-icon"
-                  @update:model-value="(v: string) => updateAttr(g.id, idx, { icon: v })" />
+                  @update:model-value="(v: string) => onAttrChange(g.id, idx, { icon: v })" />
                 <el-input :model-value="a.name" placeholder="名称" size="small" class="attr-name"
-                  @update:model-value="(v: string) => updateAttr(g.id, idx, { name: v })" />
+                  @update:model-value="(v: string) => onAttrChange(g.id, idx, { name: v })" />
                 <el-input :model-value="String(a.value ?? '')" placeholder="值" size="small" class="attr-value"
                   @update:model-value="(v: string) => updateAttr(g.id, idx, { value: v })" />
                 <el-button link type="danger" size="small" @click="removeAttr(g.id, idx)">

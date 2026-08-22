@@ -1049,6 +1049,35 @@ export function useRecipeGraph() {
     return [...set];
   }
 
+  /**
+   * 分组属性图标/名称变更后，同步到该分组下所有节点的对应属性（仅 icon + name）。
+   * 匹配方式：节点属性 name === oldName（用户手动改过名的不同步）。
+   */
+  function syncGroupAttrToNodes(
+    gid: string,
+    oldName: string,
+    newIcon: string,
+    newName: string,
+  ) {
+    getNodes.value.forEach((n) => {
+      const data = n.data as any;
+      if (!data?.groupIds?.includes(gid)) return;
+      if (!Array.isArray(data?.attributes) || !data.attributes.length) return;
+      let changed = false;
+      const newAttrs = data.attributes.map((a: any) => {
+        if (a.name === oldName) {
+          changed = true;
+          return { ...a, icon: newIcon, name: newName };
+        }
+        return a;
+      });
+      if (changed) {
+        updateNode(n.id, { data: { ...data, attributes: newAttrs } });
+      }
+    });
+    persist();
+  }
+
   return {
     nodes,
     edges,
@@ -1071,6 +1100,7 @@ export function useRecipeGraph() {
     getItemNodes,
     getActionNodes,
     getCanvasUnits,
+    syncGroupAttrToNodes,
     parseSourceRecipe,
     importSourceRecipes,
     getTraceAttributeNames,
