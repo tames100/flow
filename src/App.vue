@@ -928,9 +928,24 @@ const shortcutsList = [
   color: #909399;
 }
 
-/* 配方录入弹窗：顶部与工具栏底部对齐（top 通过 prop 传入，内联变量优先级高于 class），限制弹窗高度保证视口内完整显示全部内容 */
+/* 配方录入弹窗：弹窗本体固定高度（永远不超过视口），内部三栏各自滚动 */
+.recipe-dialog {
+  height: calc(100vh - 100px);
+  max-height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.recipe-dialog :deep(.el-dialog__header) {
+  flex-shrink: 0;
+}
+
 .recipe-dialog :deep(.el-dialog__body) {
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 </style>

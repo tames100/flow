@@ -538,12 +538,19 @@ function submit() {
     <input ref="outputUpload.fileInput" type="file" accept="image/*" style="display: none" />
     <input ref="actionUpload.fileInput" type="file" accept="image/*" style="display: none" />
 
-    <el-form label-position="top" size="default">
+    <div class="form-actions">
+      <el-button type="primary" style="width: 100%" @click="submit">
+        {{ isEditMode ? '保存修改' : '生成配方节点' }}
+      </el-button>
+    </div>
+
+    <el-form label-position="top" size="default" class="form-body">
       <div class="form-columns">
         <!-- 左列：输入 -->
         <div class="form-col">
           <div class="section-label">输入</div>
           <div v-for="(inp, idx) in form.inputs" :key="idx" class="input-row">
+            <div class="row-index">{{ idx + 1 }}</div>
             <el-select :model-value="inp.refId" placeholder="选择已有产物（可选）" clearable filterable style="width: 100%"
               @focus="pasteTarget = `in${idx}`" @change="(v: string) => onSelectExisting(idx, v)">
               <el-option v-for="n in getItemNodes()" :key="n.id" :label="n.name" :value="n.id">
@@ -680,6 +687,7 @@ function submit() {
         <div class="form-col">
           <div class="section-label">输出</div>
           <div v-for="(out, idx) in form.outputs" :key="idx" class="input-row">
+            <div class="row-index out">{{ idx + 1 }}</div>
             <el-select :model-value="out.refId" placeholder="选择已有物品（可选）" clearable filterable style="width: 100%"
               @focus="pasteTarget = `out${idx}`" @change="(v: string) => onSelectExistingOutput(idx, v)">
               <el-option v-for="n in getItemNodes()" :key="n.id" :label="n.name" :value="n.id">
@@ -751,10 +759,6 @@ function submit() {
           <el-button text type="primary" @click="addOutputRow">+ 添加输出</el-button>
         </div>
       </div>
-
-      <el-button type="primary" style="width: 100%; margin-top: 14px" @click="submit">
-        {{ isEditMode ? '保存修改' : '生成配方节点' }}
-      </el-button>
     </el-form>
     <input ref="attrIconFileInput" type="file" accept="image/*" style="display: none" @change="onAttrIconFileChange" />
   </div>
@@ -763,8 +767,25 @@ function submit() {
 <style scoped>
 .form-panel {
   padding: 14px;
-  height: 100%;
-  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 200px);
+}
+
+.form-actions {
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+
+/* el-form 作为弹性子项：占满剩余高度，内部纵向布局 */
+.form-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .section-label {
@@ -774,12 +795,15 @@ function submit() {
   margin-bottom: 8px;
 }
 
-/* 三栏布局：输入 | 加工 | 输出 */
+/* 三栏布局：输入 | 加工 | 输出；单行栅格，行高占满容器，各栏独立纵向滚动 */
 .form-columns {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .form-col {
@@ -787,6 +811,8 @@ function submit() {
   border-radius: 8px;
   padding: 10px;
   background: #fafafa;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .name-quantity {
@@ -860,9 +886,36 @@ function submit() {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px dashed #ebeef5;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px dashed #c0c4cc;
+}
+
+/* 最后一行不画分割线，避免与「+ 添加」按钮之间出现多余线条 */
+.input-row:last-of-type {
+  border-bottom: none;
+  margin-bottom: 6px;
+  padding-bottom: 0;
+}
+
+/* 序号徽标：输入蓝、输出橙（与连线配色一致） */
+.row-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #409eff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.row-index.out {
+  background: #e6a23c;
 }
 
 .desc-input :deep(.el-textarea__inner) {
