@@ -430,10 +430,22 @@ function onReset() {
 // 在画布空白处右键：打开画布级菜单（创建节点）
 function onCanvasContextMenu(e: MouseEvent) {
   const targetEl = e.target as HTMLElement
-  // 仅当右键落在画布空白(pane)时才打开画布菜单；节点右键已在节点组件内处理并 stopPropagation
-  if (targetEl && targetEl.classList.contains('vue-flow__pane')) {
-    openContextMenu(e, { type: 'canvas' })
+  // 如果右键落在节点卡片上，节点组件的 contextmenu 已经 stopPropagation，不会冒泡到这里
+  // 因此命中这里时一定是画布（或 Vue Flow 内部容器：pane / selection 框 / viewport 等）
+  const withinFlow = targetEl?.closest('.vue-flow')
+  if (!withinFlow) return
+  // 如果已经选中 ≥2 个节点：进入批量模式菜单
+  const selectedNodes = (getNodes.value as any[]).filter((n) => n.selected)
+  if (selectedNodes.length >= 2) {
+    const kinds = new Set(
+      selectedNodes.map((n) => (n.data?.kind as 'item' | 'action') ?? 'item'),
+    )
+    const allKind = kinds.size === 1 ? (kinds.values().next().value as 'item' | 'action') : 'mixed'
+    openContextMenu(e, { type: 'multi-node', nodeIds: selectedNodes.map((n) => n.id), allKind })
+    return
   }
+  // 否则：普通画布菜单
+  openContextMenu(e, { type: 'canvas' })
 }
 
 // 根据右键屏幕坐标创建节点并打开属性面板编辑

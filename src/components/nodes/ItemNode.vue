@@ -30,6 +30,8 @@ const groupNames = computed(() => {
 })
 
 function onContextMenu(e: MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
   const selectedIds = (getNodes.value as any[]).filter((n) => n.selected).map((n) => n.id)
   if (selectedIds.length >= 2) {
     const kinds = new Set(
