@@ -729,7 +729,8 @@ watch(edgeId, (v) => emit('update:edge', v))
               <div class="attr-trace-head">
                 <span class="attr-trace-name">{{ t.name }}</span>
                 <span v-if="t.targetAttr" class="attr-trace-target">
-                  {{ label }}：{{ t.targetAttr.value }}
+                  {{ label }}：{{ t.targetAttr.value }} × {{ traceQty }} = {{
+                    Number(t.targetAttr.value) * Number(traceQty) }}
                 </span>
               </div>
               <div v-if="t.items.length">
