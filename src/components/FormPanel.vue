@@ -15,7 +15,7 @@ import {
 } from '../composables'
 import { DEFAULT_EXTRAS, DEFAULT_UNIT } from '../types'
 
-const { addRecipeFromForm, loadRecipeFromAction, updateRecipeFromForm, detectCycle, getItemNodes, getActionNodes, getCanvasUnits } = useRecipeGraph()
+const { addRecipeFromForm, loadRecipeFromAction, updateRecipeFromForm, detectCycle, getItemNodes, getActionNodes, getCanvasUnits, deleteNode } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
 const { allGroups } = useGroups()
 const { allUnits, addUnit, removeUnit } = useUnits()
@@ -405,7 +405,15 @@ function onSelectExistingOutput(idx: number, nodeId: string) {
   form.outputs[idx].refId = nodeId
 }
 
-/** 选择已有加工节点：带入动作名称；若勾选复用图片，则带入该节点图片 */
+/** 加工节点下拉选项：按名称去重，同名只保留最近创建的一个作为代表（含其图标） */
+function uniqueActionNodes() {
+  const byName = new Map<string, { id: string; name: string; image: string; outputUnit: string; extra: string }>()
+  // 节点列表按创建顺序追加，后出现的同名节点覆盖前者 → 保留最近创建的一个
+  getActionNodes().forEach((n) => byName.set(n.name || '', n))
+  return [...byName.values()]
+}
+
+/** 选择已有加工节点：带入动作名称，并直接复用所选（最近创建）节点的图标 */
 function onSelectExistingAction(nodeId?: string) {
   if (!nodeId) {
     form.actionRefId = undefined
@@ -415,19 +423,17 @@ function onSelectExistingAction(nodeId?: string) {
   if (!act) return
   form.action = act.name
   form.actionRefId = nodeId
-  if (form.reuseActionImage) {
-    form.actionImage = act.image
-  }
+  form.actionImage = act.image
   form.actionOutputUnit = act.outputUnit
   if (act.extra) form.actionExtra = act.extra
 }
 
-/** 切换「复用图片」：勾选则带出所选加工节点图片，取消则清空（需用户上传） */
-function onToggleReuse() {
-  if (form.actionRefId) {
-    const act = getActionNodes().find((n) => n.id === form.actionRefId)
-    if (form.reuseActionImage && act) form.actionImage = act.image
-    else form.actionImage = ''
+/** 下拉选项内删除该加工节点（画布节点 + 连线一并移除）；若正选中此节点则清空表单引用 */
+function onDeleteActionNode(nodeId: string) {
+  deleteNode(nodeId)
+  if (form.actionRefId === nodeId) {
+    form.actionRefId = undefined
+    form.actionImage = ''
   }
 }
 
@@ -622,10 +628,11 @@ function submit() {
           <div class="section-label">加工</div>
           <el-select :model-value="form.actionRefId" placeholder="选择已有加工节点（可选）" clearable filterable style="width: 100%"
             @change="onSelectExistingAction">
-            <el-option v-for="n in getActionNodes()" :key="n.id" :label="n.name" :value="n.id">
+            <el-option v-for="n in uniqueActionNodes()" :key="n.id" :label="n.name" :value="n.id">
               <span style="display: flex; align-items: center; gap: 6px">
                 <img v-if="n.image" :src="n.image" class="opt-thumb" />
                 <span>{{ n.name || '未命名' }}</span>
+                <span v-if="n.id !== editActionId" class="action-del" @click.stop="onDeleteActionNode(n.id)">×</span>
               </span>
             </el-option>
           </el-select>
@@ -633,10 +640,6 @@ function submit() {
             default-first-option placeholder="选择或输入自定义动作" @change="onActionNameChange">
             <el-option v-for="a in allActions()" :key="a" :label="a" :value="a" />
           </el-select>
-          <el-checkbox v-if="form.actionRefId" v-model="form.reuseActionImage" style="margin-top: 6px"
-            @change="onToggleReuse">
-            复用该加工节点的图片
-          </el-checkbox>
           <!-- 加工动作图标图片上传（点击/拖拽/粘贴） -->
           <div class="drop-zone full" :class="{ active: pasteTarget === 'action' }" @click="pickImage('action')"
             @mouseenter="pasteTarget = 'action'" @drop="onDrop('action', $event)" @dragover.prevent>
@@ -838,6 +841,18 @@ function submit() {
 }
 
 .unit-del:hover {
+  color: #d9362e;
+}
+
+.action-del {
+  color: #f56c6c;
+  font-size: 14px;
+  margin-left: auto;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.action-del:hover {
   color: #d9362e;
 }
 
