@@ -32,7 +32,7 @@ import {
 
 const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStart, onNodeDrag, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode, updateNode, getNodes } =
   useVueFlow()
-const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel, parseSourceRecipe, importSourceRecipes, nodes, edges } =
+const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel, parseSourceRecipe, importSourceRecipes, serializeNodes, nodes } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
 const { open: openContextMenu } = useContextMenu()
