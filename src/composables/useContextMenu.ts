@@ -3,6 +3,7 @@ import { ref } from 'vue'
 export type ContextMenuTarget =
   | { type: 'canvas' }
   | { type: 'node'; nodeId: string; nodeKind: 'item' | 'action' }
+  | { type: 'multi-node'; nodeIds: string[]; allKind: 'item' | 'action' | 'mixed' }
 
 /** 全局右键菜单状态（单例） */
 const visible = ref(false)

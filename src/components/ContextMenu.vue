@@ -10,6 +10,7 @@ const emit = defineEmits<{
   editRecipe: [nodeId: string]
   duplicate: [nodeId: string]
   remove: [nodeId: string]
+  batchEditGroup: [nodeIds: string[]]
 }>()
 
 function createItem() {
@@ -34,6 +35,11 @@ function duplicate() {
 }
 function remove() {
   if (target.value.type === 'node') emit('remove', target.value.nodeId)
+  else if (target.value.type === 'multi-node') target.value.nodeIds.forEach((id) => emit('remove', id))
+  close()
+}
+function batchEditGroup() {
+  if (target.value.type === 'multi-node') emit('batchEditGroup', target.value.nodeIds)
   close()
 }
 </script>
@@ -45,6 +51,14 @@ function remove() {
         <template v-if="target.type === 'canvas'">
           <div class="ctx-item" @click="createItem">➕ 创建物品节点</div>
           <div class="ctx-item" @click="createAction">⚙️ 创建加工动作节点</div>
+        </template>
+
+        <template v-else-if="target.type === 'multi-node'">
+          <div class="ctx-info">已选中 {{ target.nodeIds.length }} 个节点</div>
+          <div v-if="target.allKind === 'item'" class="ctx-item" @click="batchEditGroup">
+            🗂️ 批量编辑分组
+          </div>
+          <div class="ctx-item danger" @click="remove">🗑️ 批量删除节点</div>
         </template>
 
         <template v-else>
@@ -78,6 +92,15 @@ function remove() {
   z-index: 10000;
   user-select: none;
   font-size: 13px;
+}
+
+.ctx-info {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #909399;
+  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 4px;
+  white-space: nowrap;
 }
 
 .ctx-item {

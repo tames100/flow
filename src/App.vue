@@ -24,6 +24,7 @@ import {
   useRecipeHighlight,
   useCanvasShortcuts,
   useContextMenu,
+  useGroups,
   useImageCrop,
   type RecipeGraphData,
   type SourceMachine,
@@ -31,10 +32,11 @@ import {
 
 const { onNodeClick, onEdgeClick, onConnect, addEdges, addNodes, onNodeDragStart, onNodeDrag, onNodeDragStop, onPaneClick, screenToFlowCoordinate, setCenter, viewport, findNode, updateNode, getNodes } =
   useVueFlow()
-const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel, parseSourceRecipe, importSourceRecipes } =
+const { detectCycle, exportJSON, importJSON, persist, loadFromStorage, createItemNode, createActionNode, duplicateNode, deleteNode, resolveUnit, edgeLabel, parseSourceRecipe, importSourceRecipes, nodes, edges } =
   useRecipeGraph()
 const { highlightFromNode, clearHighlight } = useRecipeHighlight()
 const { open: openContextMenu } = useContextMenu()
+const { allGroups } = useGroups()
 const crop = useImageCrop()
 
 const shortcutsVisible = ref(false)
@@ -93,16 +95,17 @@ onBeforeUnmount(() => {
   if (autoSaveTimer) window.clearInterval(autoSaveTimer)
 })
 
-// ---- Ctrl + 左键拖动节点 = 复制并拖出副本 ----
-// 按住 Ctrl/⌘ 拖动节点：拖动开始时立即在原点生成副本（新 id，完整复制），
+// ---- Shift + 左键拖动节点 = 复制并拖出副本 ----
+// 注：Ctrl 键留给「多选节点」交互
+// 按住 Shift 拖动节点：拖动开始时立即在原点生成副本（新 id，完整复制），
 // 拖动过程中原件（及同组选中节点）钉在原位不动，副本跟随鼠标移动；
 // 松手后副本留在终点、原件留在原位。
 const dragCopyInfo = ref<{ id: string; copyId: string; group: Map<string, { x: number; y: number }> } | null>(null)
 
 onNodeDragStart(({ node, event }) => {
-  if (!('ctrlKey' in event)) return
+  if (!('shiftKey' in event)) return
   const e = event as MouseEvent
-  if (!e.ctrlKey && !e.metaKey) return
+  if (!e.shiftKey) return
   // 立即在原点生成副本（复制除 id 外的所有值，id 重新生成）
   const copy = duplicateNode(node.id, { ...node.position })
   if (!copy) return
@@ -147,6 +150,9 @@ onPaneClick(() => {
 const selectedNodeId = ref<string | null>(null)
 const selectedEdgeId = ref<string | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
+const folderUploadInput = ref<HTMLInputElement | null>(null)
+const batchEditDialogVisible = ref(false)
+const batchEditGroupIds = ref<string[]>([])
 const formDialogVisible = ref(false)
 const formEditActionId = ref<string | null>(null)
 const formDialogTitle = ref('配方录入')
@@ -191,12 +197,19 @@ onEdgeClick(({ edge }) => {
 
 // 选中节点同步到属性面板
 onNodeClick(({ node, event }) => {
-  // Ctrl/⌘ + 点击节点 = 立即复制当前节点（新 id，完整复制），副本偏移显示并选中
-  if ('ctrlKey' in event && (event.ctrlKey || event.metaKey)) {
+  // Shift + 点击节点 = 立即复制当前节点（新 id，完整复制），副本偏移显示并选中
+  // 注：Ctrl/⌘ 留给 Vue Flow 的多选交互（Ctrl+单击 / Ctrl+框选）
+  if ('shiftKey' in event && event.shiftKey) {
     const copy = duplicateNode(node.id, { x: node.position.x + 24, y: node.position.y + 24 })
     selectedNodeId.value = copy?.id ?? null
     selectedEdgeId.value = null
     clearHighlight()
+    window.getSelection()?.removeAllRanges()
+    return
+  }
+  // Ctrl/⌘ 多选时，不做「居中聚焦 / 高亮上游」，保留节点多选状态给批量编辑
+  if ('ctrlKey' in event && (event.ctrlKey || event.metaKey)) {
+    selectedEdgeId.value = null
     window.getSelection()?.removeAllRanges()
     return
   }
@@ -280,6 +293,52 @@ function onExportFile() {
   a.click()
   URL.revokeObjectURL(url)
   ElMessage.success('已导出 .json 文件')
+}
+
+function onFolderUploadClick() {
+  folderUploadInput.value?.click()
+}
+async function onFolderUploadChange(e: Event) {
+  const files = Array.from((e.target as HTMLInputElement).files ?? [])
+    .filter((f) => /\.(png|jpg|jpeg|webp|gif)$/i.test(f.name))
+  if (!files.length) {
+    ElMessage.warning('未检测到可用图片文件（png/jpg/jpeg/webp/gif）')
+    return
+  }
+  // 读取当前视图中心，围绕它排布新节点
+  const viewCenter = viewport.value
+  const startX = viewCenter.x - viewCenter.x / viewCenter.zoom + 60
+  const startY = viewCenter.y - viewCenter.y / viewCenter.zoom + 60
+  let i = 0
+  const perRow = 5
+  const stepX = 230
+  const stepY = 180
+  for (const file of files) {
+    const name = file.name.replace(/\.[^/.]+$/, '')
+    let imgData = ''
+    try {
+      // 单张图超过 1.5MB 也先尝试读取，失败则跳过
+      imgData = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(r.result as string)
+        r.onerror = () => reject(r.error)
+        r.readAsDataURL(file)
+      })
+    } catch (_err) {
+      ElMessage.warning(`读取失败，已跳过：${file.name}`)
+      continue
+    }
+    const col = i % perRow
+    const row = Math.floor(i / perRow)
+    const pos = { x: startX + col * stepX, y: startY + row * stepY }
+    const n = createItemNode(name, imgData, pos, true, 1, '', [])
+    addNodes([n as any])
+    i++
+  }
+  nodes.value = JSON.parse(JSON.stringify(serializeNodes()))
+  persist()
+  ElMessage.success(`已批量生成 ${i} 个物品节点`)
+    ; (e.target as HTMLInputElement).value = ''
 }
 
 function onImportClick() {
@@ -421,6 +480,53 @@ function onCtxDuplicate(nodeId: string) {
   duplicateNode(nodeId)
   persist()
 }
+const batchEditNodeIds = ref<string[]>([])
+const batchEditMode = ref<'union' | 'replace'>('union')
+function onCtxBatchEditGroup(nodeIds: string[]) {
+  batchEditNodeIds.value = nodeIds
+  // 取交集：所有选中物品节点共同拥有的分组作为默认勾选
+  const groupsList = allGroups()
+  if (nodeIds.length === 0) {
+    batchEditGroupIds.value = []
+  } else {
+    let common: string[] | null = null
+    for (const id of nodeIds) {
+      const n = findNode(id)
+      const ids = (n?.data as any)?.groupIds as string[] | undefined
+      if (!ids || ids.length === 0) {
+        common = []
+        break
+      }
+      common = common === null ? [...ids] : common.filter((g) => ids.includes(g))
+    }
+    batchEditGroupIds.value = common ?? []
+  }
+  // 若无交集，启用"合并"模式，避免用户以为所有选中的都没有分组
+  batchEditMode.value = batchEditGroupIds.value.length ? 'replace' : 'union'
+  void groupsList
+  batchEditDialogVisible.value = true
+}
+function onBatchEditConfirm() {
+  const ids = batchEditNodeIds.value
+  const target = batchEditGroupIds.value
+  for (const id of ids) {
+    const n = findNode(id)
+    if (!n || n.data?.kind !== 'item') continue
+    const curr = ((n.data as any).groupIds ?? []) as string[]
+    let next: string[]
+    if (batchEditMode.value === 'replace') {
+      next = target.length ? [...new Set(target)] : []
+    } else {
+      next = [...new Set([...curr, ...target])]
+    }
+    updateNode(id, {
+      data: { ...n.data, groupIds: next.length ? next : undefined } as any,
+    })
+  }
+  persist()
+  batchEditDialogVisible.value = false
+  ElMessage.success(`已更新 ${ids.length} 个物品节点的分组`)
+}
 function onCtxRemove(nodeId: string) {
   deleteNode(nodeId)
   persist()
@@ -473,6 +579,7 @@ const shortcutsList = [
         <el-button size="small" type="primary" @click="onSaveState">💾 保存画布状态</el-button>
         <el-button size="small" @click="onExportFile">导出 JSON</el-button>
         <el-button size="small" @click="onImportClick">导入 JSON</el-button>
+        <el-button size="small" type="success" @click="onFolderUploadClick">🖼 批量导入图片</el-button>
         <el-button size="small" type="danger" plain @click="onReset">清空</el-button>
         <div class="auto-save-set" title="设置自动保存间隔">
           <span class="auto-save-label">自动保存</span>
@@ -482,6 +589,8 @@ const shortcutsList = [
         </div>
         <el-button size="small" @click="shortcutsVisible = true">⌨ 快捷键说明</el-button>
         <input ref="importInput" type="file" accept="application/json" style="display:none" @change="onImportChange" />
+        <input ref="folderUploadInput" type="file" multiple webkitdirectory directory style="display:none"
+          @change="onFolderUploadChange" />
       </div>
     </header>
 
@@ -519,7 +628,37 @@ const shortcutsList = [
 
     <!-- 自定义右键菜单 -->
     <ContextMenu @create-item="onCtxCreateItem" @create-action="onCtxCreateAction" @edit="onCtxEdit"
-      @edit-recipe="onCtxEditRecipe" @duplicate="onCtxDuplicate" @remove="onCtxRemove" />
+      @edit-recipe="onCtxEditRecipe" @batch-edit-group="onCtxBatchEditGroup" @duplicate="onCtxDuplicate"
+      @remove="onCtxRemove" />
+
+    <!-- 批量编辑分组对话框 -->
+    <el-dialog v-model="batchEditDialogVisible" title="批量编辑分组" width="480px" append-to-body>
+      <div class="batch-edit-summary">
+        已选中 <b>{{ batchEditNodeIds.length }}</b> 个物品节点
+      </div>
+      <div class="batch-edit-mode">
+        <el-radio-group v-model="batchEditMode" size="default">
+          <el-radio-button label="replace">覆盖原有分组</el-radio-button>
+          <el-radio-button label="union">合并到原有分组</el-radio-button>
+        </el-radio-group>
+      </div>
+      <div class="batch-edit-select">
+        <el-select v-model="batchEditGroupIds" multiple filterable collapse-tags collapse-tags-tooltip
+          default-first-option clearable placeholder="请选择要写入的分组" style="width: 100%">
+          <el-option v-for="g in allGroups()" :key="g.id" :label="g.name" :value="g.id" />
+        </el-select>
+      </div>
+      <div class="batch-edit-tip" v-if="batchEditMode === 'replace'">
+        覆盖模式：勾选后，所有选中节点的分组将被替换为你的选择；不勾选任何分组则全部清空。
+      </div>
+      <div class="batch-edit-tip" v-else>
+        合并模式：勾选的分组将追加到所有选中节点的原有分组上，不删除已有分组。
+      </div>
+      <template #footer>
+        <el-button @click="batchEditDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="onBatchEditConfirm">确认修改</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 快捷键说明弹窗 -->
     <el-dialog v-model="shortcutsVisible" title="快捷键说明" width="440px" append-to-body>
@@ -565,6 +704,29 @@ const shortcutsList = [
 </template>
 
 <style scoped>
+.batch-edit-summary {
+  font-size: 14px;
+  margin-bottom: 14px;
+  color: #303133;
+}
+
+.batch-edit-mode {
+  margin-bottom: 14px;
+}
+
+.batch-edit-select {
+  margin-bottom: 10px;
+}
+
+.batch-edit-tip {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.6;
+  background: #f4f4f5;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
 .layout {
   display: flex;
   flex-direction: column;

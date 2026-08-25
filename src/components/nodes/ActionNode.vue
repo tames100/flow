@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Handle, Position } from '@vue-flow/core'
+import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { useContextMenu, useGroups, type ActionNodeData } from '../../composables'
 
 const props = defineProps<{
@@ -8,6 +8,7 @@ const props = defineProps<{
   data: ActionNodeData
 }>()
 
+const { getNodes } = useVueFlow()
 const { open: openContextMenu } = useContextMenu()
 const { allGroups } = useGroups()
 
@@ -30,6 +31,17 @@ const groupNames = computed(() => {
 })
 
 function onContextMenu(e: MouseEvent) {
+  const selectedIds = (getNodes.value as any[]).filter((n) => n.selected).map((n) => n.id)
+  if (selectedIds.length >= 2) {
+    const kinds = new Set(
+      (getNodes.value as any[])
+        .filter((n) => n.selected)
+        .map((n) => (n.data?.kind as 'item' | 'action') ?? 'item'),
+    )
+    const allKind = kinds.size === 1 ? (kinds.values().next().value as 'item' | 'action') : 'mixed'
+    openContextMenu(e, { type: 'multi-node', nodeIds: selectedIds, allKind })
+    return
+  }
   openContextMenu(e, { type: 'node', nodeId: props.id, nodeKind: 'action' })
 }
 </script>
