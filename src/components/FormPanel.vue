@@ -7,13 +7,12 @@ import {
   useUnits,
   useImageUpload,
   useImageCrop,
-  fileToDataURL,
   fileBaseName,
-  isImageIcon,
   type ItemAttribute,
   type RecipeForm,
 } from '../composables'
 import { DEFAULT_EXTRAS, DEFAULT_UNIT } from '../types'
+import FormRowAttributes from './FormRowAttributes.vue'
 
 const { addRecipeFromForm, loadRecipeFromAction, updateRecipeFromForm, detectCycle, getItemNodes, getActionNodes, getCanvasUnits, deleteNode } = useRecipeGraph()
 const { allActions, addAction } = useActionTypes()
@@ -74,17 +73,9 @@ watch(
   { immediate: true },
 )
 
-/** 属性编辑区展开状态：`in${idx}` / `out${idx}` */
-const attrExpanded = ref<Record<string, boolean>>({})
-
-function toggleAttrArea(key: string) {
-  attrExpanded.value[key] = !attrExpanded.value[key]
-}
-
-/** 确保属性数组存在 */
-function ensureAttrs(arr: { attributes?: ItemAttribute[] }) {
-  if (!arr.attributes) arr.attributes = []
-}
+// 属性编辑已抽离至 FormRowAttributes.vue：父组件持有各实例引用，用于分组变更后调用复制缺失属性
+const inputAttrRefs = ref<Array<InstanceType<typeof FormRowAttributes> | null>>([])
+const outputAttrRefs = ref<Array<InstanceType<typeof FormRowAttributes> | null>>([])
 
 /** 收集「可选的附加操作」：内置默认项 + 画布上所有加工节点已使用的值（用户输入自定义后同步更新） */
 function getExtraOptions(): string[] {
@@ -97,91 +88,24 @@ function getExtraOptions(): string[] {
   return [...set]
 }
 
-/** 收集该行所属分组的全部属性（用于「从分组复制属性」下拉） */
-function attrsFromGroupIds(groupIds: string[] | undefined): ItemAttribute[] {
-  if (!groupIds || !groupIds.length) return []
-  const result: ItemAttribute[] = []
-  groupIds.forEach((gid) => {
-    const g = allGroups().find((x) => x.id === gid)
-    if (g?.attributes) result.push(...g.attributes)
-  })
-  return result
-}
-
-/** 从分组复制一条属性到该行（深拷贝，独立可编辑） */
-function copyAttrFromGroup(target: { attributes?: ItemAttribute[] }, attr: ItemAttribute) {
-  ensureAttrs(target)
-  target.attributes!.push(JSON.parse(JSON.stringify(attr)))
-  ElMessage.success('已从分组复制属性到节点')
-}
-
-/** 输入行：从分组复制属性（el-select @change 回调） */
-function onCopyInputAttr(idx: number, v: string) {
-  const a = attrsFromGroupIds(form.inputs[idx].groupIds).find(
-    (x) => x.name === v || String(x.value) === v,
-  )
-  if (a) copyAttrFromGroup(form.inputs[idx], a)
-}
-
-/** 输出行：从分组复制属性（el-select @change 回调） */
-function onCopyOutputAttr(idx: number, v: string) {
-  const a = attrsFromGroupIds(form.outputs[idx].groupIds).find(
-    (x) => x.name === v || String(x.value) === v,
-  )
-  if (a) copyAttrFromGroup(form.outputs[idx], a)
+/**
+ * 输入行选择分组变更后，更新 groupIds 并触发子组件检查缺失属性并提示复制。
+ */
+function onInputGroupChange(idx: number, newIds: string[]) {
+  const oldIds = form.inputs[idx].groupIds ?? []
+  form.inputs[idx].groupIds = newIds
+  const addedIds = newIds.filter((id) => !oldIds.includes(id))
+  if (addedIds.length) inputAttrRefs.value[idx]?.promptCopyMissingAttrs(addedIds)
 }
 
 /**
- * 选择分组变更后，检查新增分组中是否存在节点尚未拥有的属性，
- * 若有则提示用户是否将这些属性复制到本节点（深拷贝，独立可编辑）。
+ * 输出行选择分组变更后，更新 groupIds 并触发子组件检查缺失属性并提示复制。
  */
-function onInputGroupChange(idx: number, newIds: string[]) {
-  const inp = form.inputs[idx]
-  const oldIds = inp.groupIds ?? []
-  inp.groupIds = newIds
-  promptCopyMissingAttrs(inp, oldIds, newIds)
-}
-
 function onOutputGroupChange(idx: number, newIds: string[]) {
-  const out = form.outputs[idx]
-  const oldIds = out.groupIds ?? []
-  out.groupIds = newIds
-  promptCopyMissingAttrs(out, oldIds, newIds)
-}
-
-/** 通用：对比新旧分组 id，找出新增分组中节点缺失的属性并提示复制 */
-function promptCopyMissingAttrs(
-  target: { attributes?: ItemAttribute[]; name?: string },
-  oldIds: string[],
-  newIds: string[],
-) {
+  const oldIds = form.outputs[idx].groupIds ?? []
+  form.outputs[idx].groupIds = newIds
   const addedIds = newIds.filter((id) => !oldIds.includes(id))
-  if (!addedIds.length) return
-  const existingNames = new Set((target.attributes ?? []).map((a) => a.name))
-  const missing: { attr: ItemAttribute; groupName: string }[] = []
-  addedIds.forEach((gid) => {
-    const g = allGroups().find((x) => x.id === gid)
-    if (!g?.attributes) return
-    g.attributes.forEach((a) => {
-      if (a.name && !existingNames.has(a.name)) {
-        missing.push({ attr: a, groupName: g.name })
-      }
-    })
-  })
-  if (!missing.length) return
-  const attrList = missing.map((m) => m.attr.name).join('、')
-  const groupList = [...new Set(missing.map((m) => m.groupName))].join('、')
-  ElMessageBox.confirm(
-    `所选分组「${groupList}」包含本节点尚不存在的属性：${attrList}。是否将这些属性复制到本节点？`,
-    '从分组复制属性',
-    { confirmButtonText: '复制', cancelButtonText: '跳过', type: 'info' },
-  )
-    .then(() => {
-      ensureAttrs(target)
-      missing.forEach((m) => target.attributes!.push(JSON.parse(JSON.stringify(m.attr))))
-      ElMessage.success(`已复制 ${missing.length} 个属性`)
-    })
-    .catch(() => { })
+  if (addedIds.length) outputAttrRefs.value[idx]?.promptCopyMissingAttrs(addedIds)
 }
 
 /** 分组多选下拉所需选项 */
@@ -204,47 +128,8 @@ function onRemoveUnit(u: string) {
   removeUnit(u, getCanvasUnits())
 }
 
-function addInputAttr(idx: number) {
-  const row = form.inputs[idx]
-  ensureAttrs(row)
-  row.attributes!.push({ icon: '', name: '', value: '', desc: '' })
-}
+// 属性 add/remove/pickAttrIcon 已抽离至 FormRowAttributes.vue
 
-function removeInputAttr(idx: number, aidx: number) {
-  form.inputs[idx].attributes?.splice(aidx, 1)
-}
-
-function addOutputAttr(idx: number) {
-  const row = form.outputs[idx]
-  ensureAttrs(row)
-  row.attributes!.push({ icon: '', name: '', value: '', desc: '' })
-}
-
-function removeOutputAttr(idx: number, aidx: number) {
-  form.outputs[idx].attributes?.splice(aidx, 1)
-}
-
-// ---- 属性图标：支持本地上传 / 剪贴板粘贴 / 直接输入 emoji 或 URL ----
-const attrIconFileInput = ref<HTMLInputElement | null>(null)
-const attrIconTarget = ref<ItemAttribute | null>(null)
-
-/** 点击图标预览 → 选择本地图片 */
-function pickAttrIcon(a: ItemAttribute) {
-  attrIconTarget.value = a
-  attrIconFileInput.value?.click()
-}
-
-async function onAttrIconFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const f = input.files?.[0]
-  input.value = ''
-  if (!f || !attrIconTarget.value) return
-  try {
-    attrIconTarget.value.icon = await fileToDataURL(f)
-  } catch (err: any) {
-    ElMessage.warning(err?.message ?? '图片读取失败')
-  }
-}
 
 const inputUpload = useImageUpload()
 const outputUpload = useImageUpload()
@@ -585,37 +470,9 @@ function submit() {
                 <el-option v-for="g in groupOptions()" :key="g.id" :label="g.name" :value="g.id" />
               </el-select>
             </div>
-            <!-- 物品属性（可折叠）：图标 + 名称 + 值 + 说明 -->
-            <div class="attr-block">
-              <div class="attr-toggle" @click="toggleAttrArea(`in${idx}`)">
-                <span class="attr-toggle-text">属性（{{ inp.attributes?.length ?? 0 }}）</span>
-                <span class="attr-toggle-arrow">{{ attrExpanded[`in${idx}`] ? '▾' : '▸' }}</span>
-              </div>
-              <div v-if="attrExpanded[`in${idx}`]" class="attr-list">
-                <div v-for="(a, aidx) in inp.attributes" :key="aidx" class="attr-item">
-                  <div class="attr-item-main">
-                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标' : '点击上传图标'" @click="pickAttrIcon(a)">
-                      <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
-                      <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
-                    </span>
-                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon" />
-                    <el-input v-model="a.name" placeholder="名称" size="small" class="attr-name" />
-                    <el-input v-model="a.value" placeholder="值" size="small" class="attr-value" />
-                    <el-button link type="danger" size="small" @click="removeInputAttr(idx, aidx)">删</el-button>
-                  </div>
-                  <el-input v-model="a.desc" placeholder="说明（可选）" size="small" class="attr-desc" />
-                </div>
-                <div v-if="attrsFromGroupIds(inp.groupIds).length" class="group-attr-copy">
-                  <el-select placeholder="从分组复制属性到本节点" size="small" clearable style="width: 100%"
-                    @change="(v: string) => onCopyInputAttr(idx, v)">
-                    <el-option v-for="(ga, gi) in attrsFromGroupIds(inp.groupIds)" :key="gi"
-                      :label="`${ga.name}${ga.value !== '' ? '：' + ga.value : ''}`"
-                      :value="ga.name || String(ga.value)" />
-                  </el-select>
-                </div>
-                <el-button text type="primary" size="small" @click="addInputAttr(idx)">+ 添加属性</el-button>
-              </div>
-            </div>
+            <!-- 物品属性（可折叠）已抽离至 FormRowAttributes.vue -->
+            <FormRowAttributes :attrs="inp.attributes ?? []" :group-ids="inp.groupIds ?? []"
+              :ref="(el) => (inputAttrRefs[idx] = el as InstanceType<typeof FormRowAttributes> | null)" />
             <div class="row-actions">
               <el-button v-if="inp.image" link type="primary" size="small" @click="inp.image = ''">清除图</el-button>
               <el-button link type="danger" size="small" @click="removeInputRow(idx)">删除</el-button>
@@ -715,37 +572,9 @@ function submit() {
                 <el-option v-for="g in groupOptions()" :key="g.id" :label="g.name" :value="g.id" />
               </el-select>
             </div>
-            <!-- 产物属性（可折叠）：图标 + 名称 + 值 + 说明 -->
-            <div class="attr-block" style="margin-top: 6px">
-              <div class="attr-toggle" @click="toggleAttrArea(`out${idx}`)">
-                <span class="attr-toggle-text">属性（{{ out.attributes?.length ?? 0 }}）</span>
-                <span class="attr-toggle-arrow">{{ attrExpanded[`out${idx}`] ? '▾' : '▸' }}</span>
-              </div>
-              <div v-if="attrExpanded[`out${idx}`]" class="attr-list">
-                <div v-for="(a, aidx) in out.attributes" :key="aidx" class="attr-item">
-                  <div class="attr-item-main">
-                    <span class="attr-icon-box" :title="a.icon ? '点击更换图标' : '点击上传图标'" @click="pickAttrIcon(a)">
-                      <img v-if="a.icon && isImageIcon(a.icon)" :src="a.icon" class="attr-icon-img" />
-                      <span v-else class="attr-icon-text">{{ a.icon || '📷' }}</span>
-                    </span>
-                    <el-input v-model="a.icon" placeholder="图标/emoji" size="small" class="attr-icon" />
-                    <el-input v-model="a.name" placeholder="名称" size="small" class="attr-name" />
-                    <el-input v-model="a.value" placeholder="值" size="small" class="attr-value" />
-                    <el-button link type="danger" size="small" @click="removeOutputAttr(idx, aidx)">删</el-button>
-                  </div>
-                  <el-input v-model="a.desc" placeholder="说明（可选）" size="small" class="attr-desc" />
-                </div>
-                <div v-if="attrsFromGroupIds(out.groupIds).length" class="group-attr-copy">
-                  <el-select placeholder="从分组复制属性到本节点" size="small" clearable style="width: 100%"
-                    @change="(v: string) => onCopyOutputAttr(idx, v)">
-                    <el-option v-for="(ga, gi) in attrsFromGroupIds(out.groupIds)" :key="gi"
-                      :label="`${ga.name}${ga.value !== '' ? '：' + ga.value : ''}`"
-                      :value="ga.name || String(ga.value)" />
-                  </el-select>
-                </div>
-                <el-button text type="primary" size="small" @click="addOutputAttr(idx)">+ 添加属性</el-button>
-              </div>
-            </div>
+            <!-- 产物属性（可折叠）已抽离至 FormRowAttributes.vue -->
+            <FormRowAttributes :attrs="out.attributes ?? []" :group-ids="out.groupIds ?? []" style="margin-top: 6px"
+              :ref="(el) => (outputAttrRefs[idx] = el as InstanceType<typeof FormRowAttributes> | null)" />
             <div class="row-actions">
               <el-button v-if="out.image" link type="primary" size="small" @click="out.image = ''">清除图</el-button>
               <el-button link type="danger" size="small" @click="removeOutputRow(idx)">删除</el-button>
@@ -760,7 +589,6 @@ function submit() {
         </div>
       </div>
     </el-form>
-    <input ref="attrIconFileInput" type="file" accept="image/*" style="display: none" @change="onAttrIconFileChange" />
   </div>
 </template>
 
@@ -966,107 +794,5 @@ function submit() {
   height: 20px;
   object-fit: cover;
   border-radius: 4px;
-}
-
-/* 物品属性编辑区 */
-.attr-block {
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.attr-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  cursor: pointer;
-  background: #f5f7fa;
-  font-size: 12px;
-  color: #606266;
-}
-
-.attr-toggle:hover {
-  background: #ecf5ff;
-}
-
-.attr-toggle-arrow {
-  font-size: 10px;
-  color: #909399;
-}
-
-.attr-list {
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: #fff;
-}
-
-.attr-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px;
-  border: 1px dashed #e4e7ed;
-  border-radius: 4px;
-}
-
-.attr-item-main {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.attr-icon-box {
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed #c0c4cc;
-  border-radius: 4px;
-  cursor: pointer;
-  overflow: hidden;
-  background: #fff;
-}
-
-.attr-icon-box:hover {
-  border-color: #409eff;
-}
-
-.attr-icon-img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.attr-icon-text {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.attr-icon {
-  width: 56px;
-  flex-shrink: 0;
-}
-
-.attr-name {
-  flex: 1;
-  min-width: 0;
-}
-
-.attr-value {
-  flex: 1;
-  min-width: 0;
-}
-
-.attr-desc {
-  width: 100%;
-}
-
-.attr-item-main :deep(.el-input__inner) {
-  font-size: 12px;
 }
 </style>

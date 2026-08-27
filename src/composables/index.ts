@@ -14,6 +14,7 @@ export * from "./useUnits";
 export * from "./useImageUpload";
 export * from "./useImagePreview";
 export * from "./useImageCrop";
+export * from "./useSourceRecipe";
 
 export { DEFAULT_ACTIONS } from "../types";
 export type {
@@ -27,4 +28,6 @@ export type {
   RecipeForm,
   RecipeGraphData,
   RecipeGroup,
+  CanvasData,
+  MultiCanvasGraphData,
 } from "../types";

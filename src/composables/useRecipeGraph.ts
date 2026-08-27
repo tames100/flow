@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, shallowRef } from "vue";
 import { useVueFlow, MarkerType } from "@vue-flow/core";
 import type {
   ActionNodeData,
@@ -10,38 +10,30 @@ import type {
   RecipeGraphData,
   RecipeNode,
   RecipeNodeData,
+  CanvasData,
+  MultiCanvasGraphData,
 } from "../types";
 import { DEFAULT_UNIT } from "../types";
 import { useActionTypes } from "./useActionTypes";
 import { useGroups } from "./useGroups";
+import {
+  parseSourceRecipe,
+  nameFromId,
+  unitOfIngredient,
+  type SourceIngredient,
+  type SourceRecipe,
+  type SourceMachine,
+} from "./useSourceRecipe";
+
+export type { SourceIngredient, SourceRecipe, SourceMachine };
 
 const STORAGE_KEY = "vflow_graph_data";
 
 let nodeSeq = 1;
+let canvasSeq = 1;
 
-/** 源配方 JSON 中的单个原料 / 产物（物品或流体） */
-export interface SourceIngredient {
-  type: string;
-  id: string;
-  quantity: number;
-}
-
-/** 源配方 JSON 中的一条配方 */
-export interface SourceRecipe {
-  category?: string;
-  name: string;
-  inputs: SourceIngredient[];
-  output: SourceIngredient;
-  heated?: boolean;
-  timeTicks?: number;
-  timeSeconds?: number;
-}
-
-/** 源配方 JSON 解析结果（一台机器及其全部配方） */
-export interface SourceMachine {
-  machine: string;
-  description: string;
-  recipes: SourceRecipe[];
+function genCanvasId(): string {
+  return `cv_${Date.now().toString(36)}_${canvasSeq++}`;
 }
 
 /** 属性追踪明细行（某个基本原料对目标属性值的贡献） */
@@ -90,6 +82,12 @@ function edgeLabel(qty: number, unit: string): string {
 const nodes = ref<any[]>([]);
 const edges = ref<any[]>([]);
 
+// 多画布状态（模块级单例）：每个画布独立持有自己的节点 / 连线 / 视图；
+// 加工动作类型池（useActionTypes）与分组（useGroups）为全局共享，不属于单个画布。
+// 使用 shallowRef：画布内部数据以不可变方式整体替换，无需深层响应式，避免与 RecipeNode 复杂泛型叠加导致类型实例化过深。
+const canvases = shallowRef<CanvasData[]>([]);
+const activeCanvasId = ref<string>("");
+
 export function useRecipeGraph() {
   const {
     addNodes,
@@ -106,7 +104,7 @@ export function useRecipeGraph() {
     viewport,
     setViewport,
   } = useVueFlow();
-  const { allActions } = useActionTypes();
+  const { allActions, mergeImported: mergeImportedActions } = useActionTypes();
   const { allGroups, mergeImported: mergeImportedGroups } = useGroups();
 
   /** 从 VueFlow store 序列化节点：仅保留业务字段，保证 position 始终是最新值 */
@@ -146,7 +144,7 @@ export function useRecipeGraph() {
     });
   }
 
-  /** 生成当前画布的完整快照：节点（含最新位置）+ 连线 + 视图状态（平移/缩放）+ 分组 */
+  /** 生成当前活动画布的完整快照：节点（含最新位置）+ 连线 + 视图状态（平移/缩放）+ 全局分组/动作 */
   function snapshot(): RecipeGraphData {
     return {
       version: "1.0",
@@ -162,36 +160,256 @@ export function useRecipeGraph() {
     };
   }
 
+  /** 按 id 查找画布 */
+  function findCanvas(id: string): CanvasData | undefined {
+    return canvases.value.find((c) => c.id === id);
+  }
+
   /**
-   * 自动持久化：从 VueFlow store 读取最新画布状态（节点位置 / 连线 / 视图缩放）写入 localStorage。
+   * 自动持久化：从 VueFlow store 读取最新活动画布状态（节点位置 / 连线 / 视图缩放），
+   * 同步到 canvases 中对应条目，并以多画布格式写入 localStorage。
    * 任何修改（拖拽、增删、连线、数量编辑）后调用均可保证位置是最新的。
    */
   function persist() {
     try {
-      const payload = snapshot();
+      const sn = serializeNodes() as unknown as RecipeNode[];
+      const se = serializeEdges() as unknown as RecipeEdge[];
+      const vp = {
+        x: viewport.value.x,
+        y: viewport.value.y,
+        zoom: viewport.value.zoom,
+      };
+      // 1) 同步活动画布条目（保留原 name，仅更新 nodes/edges/viewport）
+      const idx = canvases.value.findIndex(
+        (c) => c.id === activeCanvasId.value,
+      );
+      if (idx >= 0) {
+        canvases.value[idx] = {
+          ...canvases.value[idx],
+          nodes: JSON.parse(JSON.stringify(sn)),
+          edges: JSON.parse(JSON.stringify(se)),
+          viewport: vp,
+        };
+      }
+      // 2) 写入多画布格式
+      const payload: MultiCanvasGraphData = {
+        version: "2.0",
+        canvases: JSON.parse(JSON.stringify(canvases.value)),
+        actions: allActions(),
+        groups: allGroups(),
+      };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      // 同步本地副本，保证 getItemNodes / detectCycle / 属性面板数量判断与画布一致
-      nodes.value = JSON.parse(JSON.stringify(payload.nodes));
-      edges.value = JSON.parse(JSON.stringify(payload.edges));
+      // 3) 同步本地副本，保证 getItemNodes / detectCycle / 属性面板数量判断与画布一致
+      nodes.value = JSON.parse(JSON.stringify(sn));
+      edges.value = JSON.parse(JSON.stringify(se));
     } catch (e) {
       // localStorage 容量超限等异常时静默忽略
       console.warn("自动保存失败", e);
     }
   }
 
-  /** 从 localStorage 恢复完整画布状态（含节点位置与视图，应用启动时调用一次） */
+  /**
+   * 把单个画布的数据载入 VueFlow store（不合并 actions / groups，不替换 canvases 列表）。
+   * 载入时会装饰连线：补齐箭头 / 样式 / 动画 / 单位（沿用导入旧数据的装饰逻辑）。
+   */
+  function loadCanvasToStore(cv: CanvasData, persistFlag = true) {
+    setNodes(cv.nodes ?? []);
+    const decoratedEdges = (cv.edges ?? []).map((e) => {
+      const srcNode = findNode(e.source);
+      const isOut = srcNode?.data?.kind === "action";
+      const color = isOut ? "#e6a23c" : "#409eff";
+      const unit = (e as any).unit || resolveUnit(e.source, e.target);
+      return {
+        ...e,
+        unit,
+        label: (e as any).unit
+          ? (e as any).label
+          : edgeLabel(qtyFromLabel((e as any).label), unit),
+        animated: e.animated ?? true,
+        style: e.style ?? {
+          stroke: color,
+          strokeWidth: 2,
+          strokeDasharray: "8 4",
+        },
+        markerEnd: e.markerEnd ?? {
+          type: MarkerType.ArrowClosed,
+          color,
+          width: 16,
+          height: 16,
+        },
+      };
+    }) as RecipeEdge[];
+    setEdges(decoratedEdges);
+    nodes.value = JSON.parse(JSON.stringify(cv.nodes ?? []));
+    edges.value = JSON.parse(JSON.stringify(decoratedEdges));
+    if (cv.viewport && typeof cv.viewport.zoom === "number") {
+      setViewport({
+        x: cv.viewport.x,
+        y: cv.viewport.y,
+        zoom: cv.viewport.zoom,
+      });
+    }
+    if (persistFlag) persist();
+  }
+
+  /** 初始化一个默认空画布（无数据时使用） */
+  function initDefaultCanvas(): CanvasData {
+    const cv: CanvasData = {
+      id: genCanvasId(),
+      name: "画布1",
+      nodes: [],
+      edges: [],
+    };
+    canvases.value = [cv];
+    activeCanvasId.value = cv.id;
+    return cv;
+  }
+
+  /**
+   * 从 localStorage 恢复全部画布状态（应用启动时调用一次）。
+   * 兼容三种数据：多画布格式（v2.0）/ 旧版单画布格式（v1.0）/ 无数据。
+   */
   function loadFromStorage(): boolean {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return false;
-      const data = JSON.parse(raw) as RecipeGraphData;
-      if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges))
+      if (!raw) {
+        initDefaultCanvas();
         return false;
-      importJSON(data, false);
-      return true;
+      }
+      const data = JSON.parse(raw);
+      // 多画布格式
+      if (data && Array.isArray(data.canvases)) {
+        mergeImportedActions(data.actions);
+        mergeImportedGroups(data.groups);
+        const list: CanvasData[] = data.canvases
+          .map((c: any) => ({
+            id: c.id || genCanvasId(),
+            name: c.name || "画布",
+            nodes: Array.isArray(c.nodes) ? c.nodes : [],
+            edges: Array.isArray(c.edges) ? c.edges : [],
+            viewport: c.viewport,
+          }))
+          .filter((c: CanvasData) => c);
+        if (!list.length) list.push(initDefaultCanvas());
+        canvases.value = list;
+        const ac =
+          data.activeCanvasId && findCanvas(data.activeCanvasId)
+            ? data.activeCanvasId
+            : list[0].id;
+        activeCanvasId.value = ac;
+        loadCanvasToStore(findCanvas(ac)!, false);
+        return true;
+      }
+      // 旧版单画布格式 → 迁移为一个画布
+      if (data && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+        mergeImportedActions(data.actions);
+        mergeImportedGroups(data.groups);
+        const cv: CanvasData = {
+          id: genCanvasId(),
+          name: "画布1",
+          nodes: data.nodes,
+          edges: data.edges,
+          viewport: data.viewport,
+        };
+        canvases.value = [cv];
+        activeCanvasId.value = cv.id;
+        loadCanvasToStore(cv, false);
+        return true;
+      }
+      initDefaultCanvas();
+      return false;
     } catch {
+      initDefaultCanvas();
       return false;
     }
+  }
+
+  // ---- 多画布管理 ----
+
+  /** 新增一个空白画布并切换过去。返回新画布 id。 */
+  function addCanvas(name?: string): string {
+    // 先保存当前活动画布的最新状态
+    persist();
+    // 生成不重名的画布名
+    const used = new Set(canvases.value.map((c) => c.name));
+    let n = canvases.value.length + 1;
+    let nm = (name || "").trim() || `画布${n}`;
+    while (used.has(nm)) {
+      n++;
+      nm = `画布${n}`;
+    }
+    const cv: CanvasData = {
+      id: genCanvasId(),
+      name: nm,
+      nodes: [],
+      edges: [],
+    };
+    canvases.value = [...canvases.value, cv];
+    // 清空 VueFlow store 供新画布使用，并重置视图
+    setNodes([]);
+    setEdges([]);
+    nodes.value = [];
+    edges.value = [];
+    setViewport({ x: 0, y: 0, zoom: 0.9 });
+    activeCanvasId.value = cv.id;
+    persist();
+    return cv.id;
+  }
+
+  /**
+   * 删除一个画布。至少保留一个画布（最后一个不可删）。
+   * 若删除的是活动画布，自动切换到相邻画布。
+   */
+  function removeCanvas(id: string): boolean {
+    if (canvases.value.length <= 1) return false;
+    const idx = canvases.value.findIndex((c) => c.id === id);
+    if (idx < 0) return false;
+    // 先保存当前活动画布最新状态
+    persist();
+    canvases.value = canvases.value.filter((c) => c.id !== id);
+    if (activeCanvasId.value === id) {
+      const nextIdx = Math.min(idx, canvases.value.length - 1);
+      const next = canvases.value[nextIdx];
+      activeCanvasId.value = next.id;
+      loadCanvasToStore(next, false);
+    }
+    persist();
+    return true;
+  }
+
+  /** 重命名画布（空名忽略） */
+  function renameCanvas(id: string, name: string) {
+    const cv = findCanvas(id);
+    if (!cv) return;
+    const nm = name.trim();
+    if (!nm) return;
+    if (cv.name === nm) return;
+    cv.name = nm;
+    canvases.value = [...canvases.value];
+    persist();
+  }
+
+  /** 切换活动画布（先保存当前画布状态，再载入目标画布） */
+  function switchCanvas(id: string) {
+    if (id === activeCanvasId.value) return;
+    const target = findCanvas(id);
+    if (!target) return;
+    persist();
+    activeCanvasId.value = id;
+    loadCanvasToStore(target, false);
+  }
+
+  /** 拖拽调整画布顺序（from → to，均基于当前下标） */
+  function reorderCanvases(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return;
+    const len = canvases.value.length;
+    if (fromIndex < 0 || fromIndex >= len) return;
+    if (toIndex < 0 || toIndex >= len) return;
+    const arr = [...canvases.value];
+    const [moved] = arr.splice(fromIndex, 1);
+    arr.splice(toIndex, 0, moved);
+    canvases.value = arr;
+    persist();
   }
 
   /** 创建一个物品节点 */
@@ -891,31 +1109,97 @@ export function useRecipeGraph() {
     return [...cycleNodes];
   }
 
-  /** 导出 JSON：包含完整画布状态（节点位置 / 连线 / 视图缩放） */
+  /** 导出当前活动画布 JSON（单画布格式，向后兼容 v1.0） */
   function exportJSON(): RecipeGraphData {
     return snapshot();
   }
 
-  /** 导入 JSON（覆盖当前图）。persist=false 时不重复写回（用于启动时从存储恢复） */
-  function importJSON(data: RecipeGraphData, persistFlag = true) {
-    if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+  /** 导出全部画布 JSON（多画布格式 v2.0，包含全部画布 + 全局动作 / 分组） */
+  function exportAllJSON(): MultiCanvasGraphData {
+    // 先同步活动画布最新状态到 canvases，再快照
+    persist();
+    return {
+      version: "2.0",
+      canvases: JSON.parse(JSON.stringify(canvases.value)),
+      actions: allActions(),
+      groups: allGroups(),
+    };
+  }
+
+  /**
+   * 导入 JSON（兼容单画布 / 多画布格式）。
+   * - 多画布格式（含 canvases 字段）→ 替换全部画布，活动画布切到第一个。
+   * - 单画布格式（含 nodes / edges）→ 替换当前活动画布的内容。
+   * persist=false 时不重复写回（用于启动时从存储恢复）。
+   */
+  function importJSON(
+    data: RecipeGraphData | MultiCanvasGraphData,
+    persistFlag = true,
+  ) {
+    // 多画布格式
+    if (data && Array.isArray((data as MultiCanvasGraphData).canvases)) {
+      const multi = data as MultiCanvasGraphData;
+      if (!Array.isArray(multi.canvases)) {
+        throw new Error("JSON 结构不合法：缺少 canvases");
+      }
+      mergeImportedActions(multi.actions);
+      mergeImportedGroups(multi.groups);
+      const list: CanvasData[] = multi.canvases
+        .map((c) => ({
+          id: c.id || genCanvasId(),
+          name: c.name || "画布",
+          nodes: Array.isArray(c.nodes) ? c.nodes : [],
+          edges: Array.isArray(c.edges) ? c.edges : [],
+          viewport: c.viewport,
+        }))
+        .filter((c) => c);
+      if (!list.length) {
+        const cv: CanvasData = {
+          id: genCanvasId(),
+          name: "画布1",
+          nodes: [],
+          edges: [],
+        };
+        list.push(cv);
+      }
+      canvases.value = list;
+      activeCanvasId.value = list[0].id;
+      loadCanvasToStore(list[0], false);
+      if (persistFlag) persist();
+      return;
+    }
+    // 单画布格式 → 替换当前活动画布内容
+    const single = data as RecipeGraphData;
+    if (
+      !single ||
+      !Array.isArray(single.nodes) ||
+      !Array.isArray(single.edges)
+    ) {
       throw new Error("JSON 结构不合法：缺少 nodes / edges");
     }
-    const { mergeImported } = useActionTypes();
-    mergeImported(data.actions);
-    mergeImportedGroups(data.groups);
-    setNodes(data.nodes);
-    // 统一为有向图 + 默认虚线动画：导入数据若缺少箭头/样式/动画，自动补齐（按方向着色）
-    const decoratedEdges = data.edges.map((e) => {
-      const srcNode = findNode(e.source);
+    mergeImportedActions(single.actions);
+    mergeImportedGroups(single.groups);
+    // 确保有活动画布
+    if (!activeCanvasId.value || !findCanvas(activeCanvasId.value)) {
+      const cv: CanvasData = {
+        id: genCanvasId(),
+        name: "画布1",
+        nodes: [],
+        edges: [],
+      };
+      canvases.value = [cv];
+      activeCanvasId.value = cv.id;
+    }
+    // 装饰连线（补齐箭头 / 样式 / 动画 / 单位）
+    const decoratedEdges = single.edges.map((e) => {
+      const srcNode = single.nodes.find((n) => n.id === e.source);
       const isOut = srcNode?.data?.kind === "action";
       const color = isOut ? "#e6a23c" : "#409eff";
-      // 单位：优先保留导入的手工单位，否则按继承规则解析（默认「个」）
-      const unit = (e as any).unit || resolveUnit(e.source, e.target);
+      // 单位：优先保留导入的手工单位，否则默认「个」（此时 store 尚未载入，无法走继承解析）
+      const unit = (e as any).unit || DEFAULT_UNIT;
       return {
         ...e,
         unit,
-        // 无单位数据自动补 label（含继承单位）；已有单位的数据保留原 label
         label: (e as any).unit
           ? (e as any).label
           : edgeLabel(qtyFromLabel((e as any).label), unit),
@@ -933,16 +1217,18 @@ export function useRecipeGraph() {
         },
       };
     }) as RecipeEdge[];
-    setEdges(decoratedEdges);
-    nodes.value = JSON.parse(JSON.stringify(data.nodes));
-    edges.value = JSON.parse(JSON.stringify(decoratedEdges));
-    // 完整还原画布视图（平移 / 缩放）；旧版数据无 viewport 时保持默认视图
-    if (data.viewport && typeof data.viewport.zoom === "number") {
-      setViewport({
-        x: data.viewport.x,
-        y: data.viewport.y,
-        zoom: data.viewport.zoom,
-      });
+    // 更新活动画布条目（先写数据，再载入 store；loadCanvasToStore 会再次装饰，但 unit 已存在不会重算）
+    const idx = canvases.value.findIndex((c) => c.id === activeCanvasId.value);
+    if (idx >= 0) {
+      canvases.value[idx] = {
+        ...canvases.value[idx],
+        nodes: JSON.parse(JSON.stringify(single.nodes)),
+        edges: JSON.parse(JSON.stringify(decoratedEdges)),
+        viewport: single.viewport
+          ? { ...single.viewport }
+          : canvases.value[idx].viewport,
+      };
+      loadCanvasToStore(canvases.value[idx], false);
     }
     if (persistFlag) persist();
   }
@@ -1076,73 +1362,6 @@ export function useRecipeGraph() {
         outputUnit: (n.data as any)?.outputUnit || DEFAULT_UNIT,
         extra: (n.data as any)?.extra ?? "",
       }));
-  }
-
-  /**
-   * 解析 Minecraft 配方 JSON（如「大容量发酵罐配方.json」）。
-   * 支持结构：{ "机器名": { "说明": "...", "配方列表": [ { "配方名", "分类", "输入", "输出", "加热", "处理时间(秒)" } ] } }
-   */
-  function parseSourceRecipe(json: unknown): SourceMachine | null {
-    if (!json || typeof json !== "object") return null;
-    const root = json as Record<string, unknown>;
-    const machineKey = Object.keys(root).find(
-      (k) =>
-        root[k] &&
-        typeof root[k] === "object" &&
-        Array.isArray((root[k] as any)["配方列表"]),
-    );
-    if (!machineKey) return null;
-    const body = root[machineKey] as Record<string, any>;
-    const list = (body["配方列表"] ?? []) as Record<string, any>[];
-    const toIngredient = (raw: any): SourceIngredient | null => {
-      if (!raw || typeof raw !== "object") return null;
-      const id = String(raw["id"] ?? "");
-      if (!id) return null;
-      return {
-        type: String(raw["类型"] ?? "物品"),
-        id,
-        quantity: Math.max(1, Number(raw["数量"] ?? 1) || 1),
-      };
-    };
-    const recipes: SourceRecipe[] = list
-      .map((r): SourceRecipe | null => {
-        const inputs = (Array.isArray(r["输入"]) ? r["输入"] : [])
-          .map(toIngredient)
-          .filter((x): x is SourceIngredient => !!x);
-        const output = toIngredient(r["输出"]);
-        if (!inputs.length || !output || !r["配方名"]) return null;
-        return {
-          category: r["分类"] ? String(r["分类"]) : undefined,
-          name: String(r["配方名"]),
-          inputs,
-          output,
-          heated: Boolean(r["加热"]),
-          timeTicks: r["处理时间(ticks)"]
-            ? Number(r["处理时间(ticks)"])
-            : undefined,
-          timeSeconds: r["处理时间(秒)"]
-            ? Number(r["处理时间(秒)"])
-            : undefined,
-        };
-      })
-      .filter((x): x is SourceRecipe => !!x);
-    if (!recipes.length) return null;
-    return {
-      machine: machineKey,
-      description: String(body["说明"] ?? ""),
-      recipes,
-    };
-  }
-
-  /** 将 id 转成可读名称（取冒号后段，下划线转空格） */
-  function nameFromId(id: string): string {
-    const short = id.includes(":") ? id.slice(id.indexOf(":") + 1) : id;
-    return short.replace(/_/g, " ");
-  }
-
-  /** 根据原料/产物类型得到单位（流体→ml，其他→默认单位） */
-  function unitOfIngredient(ing: SourceIngredient): string {
-    return ing.type === "流体" ? "ml" : DEFAULT_UNIT;
   }
 
   /**
@@ -1387,6 +1606,8 @@ export function useRecipeGraph() {
   return {
     nodes,
     edges,
+    canvases,
+    activeCanvasId,
     updateEdge,
     createItemNode,
     createActionNode,
@@ -1397,9 +1618,15 @@ export function useRecipeGraph() {
     duplicateNode,
     detectCycle,
     exportJSON,
+    exportAllJSON,
     importJSON,
     persist,
     loadFromStorage,
+    addCanvas,
+    removeCanvas,
+    renameCanvas,
+    switchCanvas,
+    reorderCanvases,
     computeBasicMaterials,
     resolveUnit,
     edgeLabel,

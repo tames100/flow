@@ -12,7 +12,10 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ActionNode: typeof import('./components/nodes/ActionNode.vue')['default']
+    BatchEditDialog: typeof import('./components/BatchEditDialog.vue')['default']
+    CanvasTabs: typeof import('./components/CanvasTabs.vue')['default']
     ContextMenu: typeof import('./components/ContextMenu.vue')['default']
+    EdgePropertyEditor: typeof import('./components/EdgePropertyEditor.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
@@ -27,6 +30,7 @@ declare module 'vue' {
     ElInput: typeof import('element-plus/es')['ElInput']
     ElInputNumber: typeof import('element-plus/es')['ElInputNumber']
     ElOption: typeof import('element-plus/es')['ElOption']
+    ElRadio: typeof import('element-plus/es')['ElRadio']
     ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
     ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
     ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
@@ -35,11 +39,17 @@ declare module 'vue' {
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
+    ExportDialog: typeof import('./components/ExportDialog.vue')['default']
     FormPanel: typeof import('./components/FormPanel.vue')['default']
+    FormRowAttributes: typeof import('./components/FormRowAttributes.vue')['default']
     GroupDrawer: typeof import('./components/GroupDrawer.vue')['default']
     ImageCropDialog: typeof import('./components/ImageCropDialog.vue')['default']
     ImagePreview: typeof import('./components/ImagePreview.vue')['default']
+    ItemAttrEditor: typeof import('./components/ItemAttrEditor.vue')['default']
     ItemNode: typeof import('./components/nodes/ItemNode.vue')['default']
     PropertyPanel: typeof import('./components/PropertyPanel.vue')['default']
+    RecipeTraceView: typeof import('./components/RecipeTraceView.vue')['default']
+    ShortcutsDialog: typeof import('./components/ShortcutsDialog.vue')['default']
+    SourceImportDialog: typeof import('./components/SourceImportDialog.vue')['default']
   }
 }

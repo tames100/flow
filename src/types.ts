@@ -175,3 +175,29 @@ export interface RecipeGraphData {
   /** 用户自定义分组列表（随配方 JSON 一起导入/导出） */
   groups?: RecipeGroup[];
 }
+
+/**
+ * 单个画布的数据（节点 / 连线 / 视图）。
+ * 多画布之间物品节点与加工节点实例互相独立，仅加工动作类型池（useActionTypes）全局共享。
+ */
+export interface CanvasData {
+  /** 画布唯一 id（用于切换 / 重命名 / 拖拽排序时定位） */
+  id: string;
+  /** 画布名称（标签页显示文本，可由用户重命名） */
+  name: string;
+  nodes: RecipeNode[];
+  edges: RecipeEdge[];
+  /** 画布视图状态（平移 / 缩放） */
+  viewport?: ViewportState;
+}
+
+/** 多画布导出 / 导入 的 JSON 结构（一次包含全部画布） */
+export interface MultiCanvasGraphData {
+  version: string;
+  /** 全部画布列表（顺序即标签页排列顺序） */
+  canvases: CanvasData[];
+  /** 自定义加工动作列表（与内置动作合并后作为可选动作，全局共享） */
+  actions: string[];
+  /** 用户自定义分组列表（全局共享） */
+  groups?: RecipeGroup[];
+}
