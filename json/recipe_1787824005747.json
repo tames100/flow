@@ -1,0 +1,2991 @@
+{
+  "version": "1.0",
+  "actions": [
+    "合成",
+    "搅拌",
+    "切割",
+    "熔炼",
+    "注液",
+    "大容量发酵罐",
+    "发酵",
+    "种植",
+    "陈化",
+    "烘干",
+    "研磨",
+    "烹饪",
+    "砧板"
+  ],
+  "groups": [
+    {
+      "id": "grp_mt494wv1_1",
+      "name": "可售卖的",
+      "attributes": [
+        {
+          "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+          "name": "金币",
+          "value": "",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "id": "grp_mt498vxp_2",
+      "name": "液体",
+      "attributes": []
+    },
+    {
+      "id": "grp_mt4igetf_1",
+      "name": "可陈化的",
+      "attributes": [
+        {
+          "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAkUlEQVR4AeySsQ2AIBREv05EwxLsAIMwAB1LwDg0dIyjPhJswViq8Zkv8Y7j4i4vr99A5IsdOOcOGL/Pow4Qeu+ltTb08xIRDYwxt1BrfcBSAnYFpVQ3yDkL8DI1SCltIQSptfJ9h9laK6WUbWrQFdeD3REC87XU76kB5yc+whijADNHWOqAxomLkMjAzBoRTgAAAP//TxzaYwAAAAZJREFUAwBZD0nV3Dm+bAAAAABJRU5ErkJggg==",
+          "name": "铁星",
+          "value": "",
+          "desc": ""
+        },
+        {
+          "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR4AeySPQqDQBSEn+YEKVKnTZ8qNwgELNKnSx8IBAK5QMDK3s4bCIK9tva21hbiAfz7FtZ2FUsVP3kuzuzsoC0Lr81AZI0dhM99B/r3mdUBwpvnSJLWWm8uEZHm+r6Mws/J7mBSAnaF3fGgDP7ZQ4AXo4HjV1b0CqUpSr5XMH/Pgbh5axkNlGJ4sDtCYB6W1G004PzER/i7xwLMHGFSBzROXIREBmbWiNADAAD//4oeaokAAAAGSURBVAMA9aBJ1QmgAowAAAAASUVORK5CYII=",
+          "name": "金星",
+          "value": "",
+          "desc": ""
+        },
+        {
+          "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR4AeySIQ6DQBREP62qbNJrNGkqmlb3CPXtGVpJNUg4A2hwWDQJgmC5AwkeA7xNFrsQJBAe+WyY2dkJO1l4bQYia+zg+LM70L/PrA4QPv4f2deV1ptLRKQ53M+j8PR+dTApAbvC5XlVBjffFeDFaNB4rpU5gZRpwfcK5vxrSx3GltFAKYYHuyME5mFJ3UYDzk98hG0SCTBzhEkd0DhxERIZmFkjQg8AAP//bgaXEwAAAAZJREFUAwAmLEi5iHHqLQAAAABJRU5ErkJggg==",
+          "name": "钻星",
+          "value": "",
+          "desc": ""
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "item_mt8a4xqn_35",
+      "type": "item",
+      "position": {
+        "x": 4565.069204310179,
+        "y": -186.64685381924406
+      },
+      "data": {
+        "kind": "item",
+        "label": "橙子果酒",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACP0lEQVR4AZSSX0hTURzHP/c6vVupG6lLdLYlaGZ/sCgrIXqo6EkCKXvwIZAgsLceeugpKgjE1x4KAuklEMIoKFAso6gMM50I6pZrbujcdA03d9umO907kJxp6OH3O4ff4ff9nN/vnCOzzWHPU8TJIpOwGUxCl24LYFcUca4sQXe7imfIhg7ZMmCvkpe+05Cgo11i5qud5PisXgBbAlgMxaIkD6m2DqYGBWNuL/tbkviXVWlTQLmyS9wqQvRfQLw7P8/AhyoOF0DfS5nb701Mp5KSXsI/AMeOQlFvtYlWc5h7bXCmOZe6Ji312xgzLnjoJXOytpOxLIBSLAtRL/Og0k/jATDYtJyjexCnTpDUxNNuLV5n8mpsNRYKs83I8QYzd2tLqb7qIL0CwhNk8ekA3wdhNr6a/XfNAOwmi7h5VsFcouCZjFNzqICqLj8+J0RcRuam4UdIYiKaaZu1Qz6YbxVt1gifP8W4WCpRXmWkxrGT9hs1ONqOMO8KMeaB4QWJTg3iVdNZFLkiP8ppBzxuVrkcD/O8qZoXPQH6nEu0dIdp9Fq4FDTRtQDrxXolciSRYnchFNngWGsJkx199F8vY2QkgmtcRbEYqAgkNhRnAPpEEla0jyXHlqgsg95rQ3Tsg4A7wa9X4U3FulYOpdJ0juYwOgW+13G+DMNPFd48irLsjOL7nd2zLlrrsjuWlp4tCnonwK9VMRmEgblcnLFcAon/i3VQ5hl1yJOQzJWPOdz35NATT/M2pmbdtp68kf8BAAD//xfzagYAAAAGSURBVAMAZtPbzaD56gEAAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 1,
+        "groupIds": [
+          "grp_mt494wv1_1",
+          "grp_mt4igetf_1"
+        ],
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "34",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAkUlEQVR4AeySsQ2AIBREv05EwxLsAIMwAB1LwDg0dIyjPhJswViq8Zkv8Y7j4i4vr99A5IsdOOcOGL/Pow4Qeu+ltTb08xIRDYwxt1BrfcBSAnYFpVQ3yDkL8DI1SCltIQSptfJ9h9laK6WUbWrQFdeD3REC87XU76kB5yc+whijADNHWOqAxomLkMjAzBoRTgAAAP//TxzaYwAAAAZJREFUAwBZD0nV3Dm+bAAAAABJRU5ErkJggg==",
+            "name": "铁星",
+            "value": "34",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR4AeySPQqDQBSEn+YEKVKnTZ8qNwgELNKnSx8IBAK5QMDK3s4bCIK9tva21hbiAfz7FtZ2FUsVP3kuzuzsoC0Lr81AZI0dhM99B/r3mdUBwpvnSJLWWm8uEZHm+r6Mws/J7mBSAnaF3fGgDP7ZQ4AXo4HjV1b0CqUpSr5XMH/Pgbh5axkNlGJ4sDtCYB6W1G004PzER/i7xwLMHGFSBzROXIREBmbWiNADAAD//4oeaokAAAAGSURBVAMA9aBJ1QmgAowAAAAASUVORK5CYII=",
+            "name": "金星",
+            "value": "51",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR4AeySIQ6DQBREP62qbNJrNGkqmlb3CPXtGVpJNUg4A2hwWDQJgmC5AwkeA7xNFrsQJBAe+WyY2dkJO1l4bQYia+zg+LM70L/PrA4QPv4f2deV1ptLRKQ53M+j8PR+dTApAbvC5XlVBjffFeDFaNB4rpU5gZRpwfcK5vxrSx3GltFAKYYHuyME5mFJ3UYDzk98hG0SCTBzhEkd0DhxERIZmFkjQg8AAP//bgaXEwAAAAZJREFUAwAmLEi5iHHqLQAAAABJRU5ErkJggg==",
+            "name": "钻星",
+            "value": "102",
+            "desc": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "item_mt8a4xrc_36",
+      "type": "item",
+      "position": {
+        "x": 4920.108630816263,
+        "y": -788.6184109083879
+      },
+      "data": {
+        "kind": "item",
+        "label": "甜浆果酒",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACRElEQVR4AZSS30tTYRjHP+c9c+fo3ObWkmHmsrQfKkiURAVBhPgHRD+IuioQKeoy6MKr7C4q6sJbK68jQkRY0I1CEpQVYowQIxPRNtvc5tnOOW/nTB1YCvq+PO/7Xrzfz/N93vcR7HDEvJqMCr9sVqukK90RIKZpcpdZxd2mZR6cy9GiV8ttAxo1r4xYUXqq2vH8ivFiPMBCUWFbgBpPRGKG6fI2cbX9ELu1VsbSsGBllC0BIbVatoiwDOKXDVJynFpa9SB9E9MMZH+waKcVnLEpICxCslJViOoBWkSQ86Ke3to6PhopPshFpmSq9ICO/v8S6is0GcZkX7GSYwWVU7ZGb9cJRv5keF1MMLaSYNr4WU5cPrg0nYAM+y2ut2UYnWqndyDtoCxext8zYacQiuvaDff2apQBdaJGRkSRk4rF6Qj4zsTRL92ic6+HWSRzFEibWfKWtapcW0uAgNMYHfjoOWJz736UZIOf0Xwb8eePGbtcoOPCFybNJTIUnZndYEFUq34ZrAiwB42VbzFu3xR0nA1xJzNH3w1B9+ECX5cqnfwGy863rSUub0K3lzHMHJ2aj4u+IP0HjvK2u4Z3E80M9iV51L/Es7jCopnZkHmdUCrBxCYkKtBUlVAowKxt8eTKJ9680hj6rJLIb7S9LnZ34T7JLjxcy8/QeLCJwclpZmSBp5M6w9+9JIytxSVASkplXqbIixT7x4d5mEswYieZx2Do92q3uRe3ilIJadtWDNtHQSky73hKOg6ydm7Tmv8F/QUAAP//lQaT9gAAAAZJREFUAwBjzdSnq2AAwAAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 1,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "13",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1",
+          "grp_mt4igetf_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8e16p7_3",
+      "type": "action",
+      "position": {
+        "x": 1673.9915370473796,
+        "y": -874.0906985360591
+      },
+      "data": {
+        "kind": "action",
+        "label": "陈化",
+        "action": "陈化",
+        "image": "",
+        "description": "使用陈化桶 / 大型陈化桶",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8e8ug6_5",
+      "type": "item",
+      "position": {
+        "x": 2157.144710259156,
+        "y": -689.6118774981974
+      },
+      "data": {
+        "kind": "item",
+        "label": "沙子",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABgUlEQVR4AVzTuUpEQRAF0KbRYNyQJyIugQaKX+wP+APmpuZGgmig4I4o4uhMoDD2KaaGh42PunXr1tJlT326P51cnR/Hd3d9Evbi7GiSOO1/Lv36fntd8ny+PCYs8GBpubzfXJWf72HpdvfL+GtY1nYOg5tfXC5zg8VSVza2ijN+fWJmYgIJg/XNAg9fnyP2dn9Z5haWAuNqiFqnbu8gChCbSnedWR+czQjp2CqgyMLqdnTiE+LSEkrAicM4hSsHaTSkJFYwE1g+Hb04jI8Jurag0g7S8kzDNir+8JbZT4bxMYE7UyJZ08AELC4XB3fThqWdmIDIiM2PPcCSf0dfse28VupsX5xfu2m1/sjuVtrRlSjHl5QxRflVNW+AUOeWF135RPxBewtiOFqJConHFXQiRKYwRXyfCXG0CsH0VWISKWST81z9V3TD0UuG6WZPmUBF1p0JYVccfTzE70CCRJ8i9LOnzCHQzbOGk+tbOxBTRJPK6Qt0E+hz2Q2veMb4fwAAAP//wUmlwwAAAAZJREFUAwBfe1ixs6ynbQAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "item_mt8e8ug6_6",
+      "type": "item",
+      "position": {
+        "x": 2623.171598774283,
+        "y": -694.2994574544075
+      },
+      "data": {
+        "kind": "item",
+        "label": "玻璃",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAo0lEQVR4AcxSywpAQBRl1opSlLJm6XP8kx/xGz5AKRs2lopS/mA4dKexGndsTJ3uncc5nTsd0a2LtEXdjVI45yqi2LXBSXUuATQEuKHeVPtpegqADCcmon6vHGAeLhlCSqAsMhcHHARh9ByBQ8bbfVu/CXx2ABfqD7CxwQ8EhnlnO0fgiCTyJKD+VQVZD5zgOtDJqe/dOUCMq6aVVNGbgLewfAAAAP//PXZu7gAAAAZJREFUAwBwu4q5Z4eh6gAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "action_mt8e8ug6_7",
+      "type": "action",
+      "position": {
+        "x": 2371.1178217440292,
+        "y": -676.2187919090263
+      },
+      "data": {
+        "kind": "action",
+        "label": "熔炼",
+        "action": "熔炼",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8e9h2c_10",
+      "type": "item",
+      "position": {
+        "x": 3108.4340874287614,
+        "y": -703.0049630873687
+      },
+      "data": {
+        "kind": "item",
+        "label": "玻璃瓶",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA6ElEQVR4AbSRIQsCQRCFZ22abUaxGfQPGCxiMBk0aLcYLtgvHhisdpOiyWQTgwaDIodFRBAsYhJE28k7WFh2d2BBPHjc3c7MN29nEvTj819A2K1G0LiSizijrIPw9o4+5RZB2Y5P893DCmEBl/uLzkM/1jbwOAPEAmrFtEgFG2osTmLdnBL+bRQWYEu2nbEAzEB2HXkl0R6s3GeA4nwmKdTBcRDDgVosHUjrNogBkMmubwOA9aFY796f7d1mMFkeUe8sw4HtnujeqxfiTSCu0g0AgkjC2qQO1yfhG+eIq7ICkIBkXTjX9QUAAP//TRFWCgAAAAZJREFUAwDLW2wh8ub3zQAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "action_mt8e9h2c_11",
+      "type": "action",
+      "position": {
+        "x": 2871.112704546596,
+        "y": -683.5849889830706
+      },
+      "data": {
+        "kind": "action",
+        "label": "合成",
+        "action": "合成",
+        "image": "data:image/png;base64,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",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8ecmys_14",
+      "type": "item",
+      "position": {
+        "x": 3576.1951785988495,
+        "y": -713.6083325181105
+      },
+      "data": {
+        "kind": "item",
+        "label": "空瓶子",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA60lEQVR4AcySMQ/BQBTH72wMRiRmEoPJJ7CIjY9gNhkMNqPVR+hWq1lEJFZpohHC3KQ1CBbj6f8llbZ3r1ZN/y/3/n3v19y7ywnmOY/7CrI7NcWUkM0CnMNRQPfHkwq5wAIKs52ArsM110s+C2hUiwJqN0tUyAUWcPJeAtq4N66XfCNguQ9Ur1WW0HzQlCPLZQepAaJmwofh4r9VFkQDhD2Jt17JS0ASZizRABhc7DstMQtaGIIGMNQIzMLkw9MAWX9DQ1oaIF3wK/9DAG4e7gKOLhLywPeMu9G2gEuzWDliam2/Qm5PutJE+AAAAP//TtsaIQAAAAZJREFUAwBcfV8ZMtjJLAAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "action_mt8ecmys_15",
+      "type": "action",
+      "position": {
+        "x": 3362.7036021757044,
+        "y": -699.4705066104548
+      },
+      "data": {
+        "kind": "action",
+        "label": "合成",
+        "action": "合成",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8eiacl_19",
+      "type": "item",
+      "position": {
+        "x": 2309.5808746989314,
+        "y": -540.4808779832304
+      },
+      "data": {
+        "kind": "item",
+        "label": "小麦",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABeklEQVR4AZSSTygEYRjG31WrbbO29rC1WnKxm5QUIWwpxW0jpZzdFBfKkauDo7ODOLjQHpRQSmkpF7Wxk4Om0ZbDupsy+n15V6uZ9k+9fTPfvM/vfZ63bZMmf3tbOc+vtSFgaWHc214d9lI9SaP/DwoEIETRn3IlO9ArFftDAG3s3oa4p4AFAmhA0BmLSjbdzqsBcXe8v+ghBhYIYDLi6Ym03Nw5QgRcqBvEUAMBNNIQj3Zw/Ln4dYMDYgYCUDGdk+m44J2Tu3vLlZPTYsgXQE6amP5gVWvTuQNGETHQAfZ1caOZhJSdL9Hp5dKbnF29y3Ml7O/gaXLGi6xfC9OZiAOWV7iwBNsqxD7f6yJsrox4r8VH6e5KytHsoSBmogrHMmHBOkItAyALuZfzfWLvTMm5Y0skEZfLtULNKhMVRH8dAGp+LmOy5gZjUpofkpfPqhx8uyGE2syzlt4ZB/xhWBR2ycpHxJyNygBo0s3y3EoZANnUmm65WcgPAAAA//9MR8AMAAAABklEQVQDAIFqv909+OjYAAAAAElFTkSuQmCC",
+        "showLabel": true,
+        "quantity": 2,
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ],
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "1",
+            "desc": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "item_mt8ejmst_23",
+      "type": "item",
+      "position": {
+        "x": 2688.9528373423273,
+        "y": -539.7505001405276
+      },
+      "data": {
+        "kind": "item",
+        "label": "袋装烘干的小麦",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABrklEQVR4AXyQTytEYRTGz1WmmFJiMCRplAVSGMbCxgewsLSxsLBXFvMJLOzslS/AwspKiiL/SigjkyQzakimhppZXPM7d87bGJPbfd7z93nOed8G+edbW531KWOB+VhDXYHk8pR/tL3kJ9f3va2NBRUxH2tkbF2BlpYwNWHqQE+T+vNzCRUip4nK8UeAxplEvzy8fFdaAhMfbBYTCzLB+UtgbjLhD0Z9OTx51Gq0t8vZs9SX8xmiQflwApCnR4ry8RoSNkjdpnUiYvgri0MqjP98mytTg98JEEZ6wtLaVXTrc418viCprKc588eHuyUei+mbOIHuaKPwxTpDOhmfaZCr/XikKJlsiZTCCfS1F+T8SnNyd3WvDuQOr1EgIYx9egtL9r3mCmtLYz7rI5J7KSjZCBOjGsruXkl2Dj7l4iYTJCqn24AYESwibHN8HVIiU7kid4+2RQTQB1SABgKACGAyJECe7bC1UAEehanVRWIjmaWPHhPFV4Hd0xOPdSEZKNpm1ABEwDucpdMePSqAYyI0EkNmIiDm5SECI5N3AgSIgOTmpQcRkgGSgV7DDwAAAP//v8BdhwAAAAZJREFUAwBAyupKg9aTLQAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "action_mt8ejmst_24",
+      "type": "action",
+      "position": {
+        "x": 2498.43438399631,
+        "y": -523.2566512558665
+      },
+      "data": {
+        "kind": "action",
+        "label": "烘干",
+        "action": "烘干",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8eks9x_27",
+      "type": "item",
+      "position": {
+        "x": 3098.0002896819237,
+        "y": -541.3998850289937
+      },
+      "data": {
+        "kind": "item",
+        "label": "面粉",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACK0lEQVR4AcyQz0tUURTHP/c544xmP+iHlVEa9GORtoj+h9rVpq0LgxYuWwTtIluFELUKgqICxaIICxqk3zUoYppU6tjM6IA/0hnf5Myb92ae783tvidKgrZp0z3cew7nnu/nnnM1/nH954BcMiqN+XH5tyk3HGGi/5msqNlNsDJMaqhnQ8i6gES0S+49dAIhNLRQDaGqMG8629eFrAHcaW6U6bGPsvZgE07RQJZd8rNxHCvPgYYGPkfuyiun9q8BrQI6Wo7JprMXCG/ehessYehTClCmekcdQhNoBJRJjp9ppqulcRXiA66erpcPPk1Su68e1y0qgcaWPYdRAenEMKIihFu2CYarqKwMcPttklvnjvoQHzCYyrA1FODLvTZuXjpPMvYdM7+I8WsOPasTH/3K+9c93L92GTP6lB3VQboHU3hL8w7HdclZNg8/jHKk2qGr7SIvr7cSvdHKxON24pFO4u8inKzfTkffBNliiaqA8KRqNOVejBdFvmSTMUp0D0wyqRu86hvhSW+KyOA0QyNJEnM5HvUnmV20KNkOz2OWT/A7UAzSZpl50yGRMTBtl501Qeq2hdkUqqCgBIWSQzpnUVgqoxddT+LvVUBsQSqiUO25xDMFhqcWGZvNM5U1SWULJLMWPw0bpGQk7dX6+uURlkOIZaT4oSNc9b/TeZsF0yKhF5jJ2UhlYwuIbxnUQysK1gJW0jFVOKoKe6elGJgpCy/2civ3f/rfAAAA//977VhhAAAABklEQVQDADzPBTDNwjnjAAAAAElFTkSuQmCC",
+        "showLabel": true,
+        "quantity": 2,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "4",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8eks9x_28",
+      "type": "action",
+      "position": {
+        "x": 2887.6892176743136,
+        "y": -524.9060361443326
+      },
+      "data": {
+        "kind": "action",
+        "label": "研磨",
+        "action": "研磨",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8en57p_31",
+      "type": "item",
+      "position": {
+        "x": 2659.755678529252,
+        "y": -338.8795160961368
+      },
+      "data": {
+        "kind": "item",
+        "label": "水桶",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABTElEQVR4AaSPsUuEcBzF3zV0Y4dbQXDRkRANLk7hkmtL0HY4iFNj+He41hI4ONbcHAhFWuDUYRg0FQSZ11Bj8X7cT/x5QsEJ7/fF997389MlLPh0AkzT/OlS110KQC7Ztg3K8zw0JfMmqAYw5FK5dorL5zHuvo9xdrOHi8kBTq52hZixw66E1AAa55NDbAzXsdzvo6qm2NpcpY2d7aEQM3aEOTsUgPZyhOn1Pj6qTwwGK3h7/xKgx6dX3N7nImNntiuGAoiiCL7vgyWCqN7DGBQ9y7Lguq5YlIcCoGkYBgiiCKO4xGXmbc0BWNB1naNTmqYpvgLIskwJ//OiAJIk+XOnLEulUwPSNO3FcSzCPM/FbB+j0QhhGIJdmdUAabR/o32j7MmpAEgOggBtSFEU6LqdEAVAQ0IcxwFh/GT+GiczdpqaAzBksUvM2voFAAD//x5lnukAAAAGSURBVAMAXiCiIXWlmyoAAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "item_mt8en57p_32",
+      "type": "item",
+      "position": {
+        "x": 3119.7556785292513,
+        "y": -338.8795160961368
+      },
+      "data": {
+        "kind": "item",
+        "label": "一杯水",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABNUlEQVR4AbSOP0hCURjFj40NRdBY0dZUBBYEQYIFOQmNERURREsEEQ3R8CBsMIJqaZIgsMYgInRIMILoz6OaShfFwUkQFFyVc+E+rtzvTeKD37vn3fud37s96PDpnmBmea9p4ndR8QYsOge7MBkJzjcliSVg+e7yGE78wiPr/iGbeoAksQT8y+hgLxdsrK0q+KH3mE1EwWEijbfbM2xFJhUnm4vgnlnUWRSwkM6VQUJOHmR9YUJ32lZRoCdevgMqhqeqapVevgJdZinzNYCV+A+jha+Ak6//ddTcTwW/JSxBOf+LYqWBp2TGK/YFp5H7eJT6sAScukm9Y2yun9FjZzvqZTNYgpL7HEicxxAeH8L99ZJidriA5NUpeGaWmS0BNzkYO9pHKBJV+JU5Kwp4QIkJ9yRaAAAA//8gauqhAAAABklEQVQDAHrPdiEdHzTFAAAAAElFTkSuQmCC",
+        "showLabel": true,
+        "quantity": 4
+      }
+    },
+    {
+      "id": "action_mt8en57p_33",
+      "type": "action",
+      "position": {
+        "x": 2879.7556785292513,
+        "y": -338.8795160961368
+      },
+      "data": {
+        "kind": "action",
+        "label": "合成",
+        "action": "合成",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8ep965_36",
+      "type": "item",
+      "position": {
+        "x": 2716.628729383024,
+        "y": -156.7237424856769
+      },
+      "data": {
+        "kind": "item",
+        "label": "甘蔗",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABPUlEQVR4AbyRsUtCURTGPxsLKScJ0y2waNWtIQiCaIqg1bX/wUHamxpa3YtoiP6BJq0xSmpLRZxURNfr+z04D59eQRAUPu8953zfd865b0Mr/tZj8DA6deXPgju8SLrZgRdOYAJORM+Vhr5fhwnu0/AaIGp9DZUtppQ52NbL3a8uK/lQR42JwiD48xog7vyPVThPBxRpN7cpJkCMYftnIFvHa1AtNRKIIdceW/p774cTWIyZreM1KFXzzsiI94939PHW1f11TfWnduwt5gwQM7d1PrnJau8oqWa9p1R6S8WrjMrBF4EDIoOz25wDJNnfOhPzJjwokzABK5AHkQEdSCDmDpnOiBGR42R3ABdEBpaESDeK7D0tMg41Q2RAAjEnsEl8IuqGmAFkQBEzuxMvQszASMuK4XsNlumMGEwAAAD//w+tIDcAAAAGSURBVAMAoE+1IVUU8jUAAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "item_mt8eqa6d_40",
+      "type": "item",
+      "position": {
+        "x": 3118.7167929382604,
+        "y": -179.10778754977883
+      },
+      "data": {
+        "kind": "item",
+        "label": "糖",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABBUlEQVR4AcyPMQrCQBBFR1tbtxO0thM8gyfQE4igJ7AMKb2BELxBLpBcQSFdaoV0a2sdeWt2STaJjY2Bv5mZnf92Zig/fn8OSJJrib5t2bsCxsViKqvVUoj7IJ0ADBiVUsY3mYxlvd6XJvGOFsCabZ/WWubzmYThsRPSAPhmIEyR53cpimcnxAEwszMmxMsYiZUaCWswyW63bUziAJ9GJRhtjIFc6xclSdObAZmkOhwgii7Ci4xc3RkYZkDUmIJViK0cII7PgyA4GQiX9mUMgKkR8xC95MgBSLgAstkcJMselMzIGKn7ZhoaAApAEM2YEDE1RE9dLYC9pLkuW/f/vQC/sS9/AwAA//+X6DNlAAAABklEQVQDADL5kCFrfYlfAAAAAElFTkSuQmCC",
+        "showLabel": true,
+        "quantity": 1,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "1",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8eqa6d_41",
+      "type": "action",
+      "position": {
+        "x": 2888.721199978252,
+        "y": -150.63370597441747
+      },
+      "data": {
+        "kind": "action",
+        "label": "合成",
+        "action": "合成",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8esx2u_44",
+      "type": "item",
+      "position": {
+        "x": 3582.223237602166,
+        "y": -391.68863532699766
+      },
+      "data": {
+        "kind": "item",
+        "label": "酵母",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABjUlEQVR4AdyQTUsCURiFjxFon/ZBkBVkiCASmBVUROAqFy6KCqJF/YN+gqsW1S7EHxARRNCiFgYGBS0CA63chKH2sYjsUzRKBWGac8WLmrt2DfPMvPPec85959bgj9d/DZhz9Cvk1LOoEOeIWSHVjqvsDGgiyzN2eFZcGFyYx/VDBjajTsAQUhokA2h02vSgmcYmywQudnaF1u1dhWt8AD0dWjisegxbuhWxoD5EQNGcrzXAbO+SRtbW3jpVBjHN0qQdLW1GzI4ZZIgIEAr1QTF35tjc/WA/Ln6B9fbapqipUaXyFgGfmZxo+M6uQCFF3J3NqWkTXwL2t44ukfwu6NkUAf7zqGYv8AJzZzNq809g0Ib3EMGbCNzrPtB0HIqIfnuDBifhDwQjjxoZwIIE4im8pXMiiGGjJj2KDPXp0Fqvxe2zPD/wEhOw4BThWBKx1yyiibTEH06BhO6yIPeJpNydPhnAD47FENbk/UuBvpFVgUozu2UBbDCE/0gYRmgkXKOmlF8BXKSwGlyr5AcAAP//K069LQAAAAZJREFUAwAkOcUhSGy+TQAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 5,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "3",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8esx2u_45",
+      "type": "action",
+      "position": {
+        "x": 3334.8227473748266,
+        "y": -344.29082180735986
+      },
+      "data": {
+        "kind": "action",
+        "label": "烹饪",
+        "action": "烹饪",
+        "image": "",
+        "description": "厨锅 / 烹饪锅",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8eweef_50",
+      "type": "item",
+      "position": {
+        "x": 3142.6816970713785,
+        "y": 53.16140918881639
+      },
+      "data": {
+        "kind": "item",
+        "label": "橙子",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABa0lEQVR4AaSQP0sDQRTE567QLoVgBEFiCsU0tgppREFELAOWglXA2m9gpZXfIZ3aiIUIWhn8UyoYSQQNBiFRmzSS5uL+9nJLkoMoJGTuzb43M2/vfA35iwUs5ZPtCP/JjgVgWsyOCiQ3JtqcByEW8FTzVK61dFtsaXtzRH+FxAIaZ3XvuuhpLCUbwvajrNoA3o9YAMLKeF0nP1/aeWxo6+VTuRVfq7MSs4EBCHL5tBLLaWkmpdzhuvYLa5YnpnwbhKY7xN2AAZvsMJOxRaWSdHoechMI4Sa7c777uC6AIVtVqcoaCYFjNLV59Wol/Y+eACvCgIrNhtNrvgfiFaiMuuEC7r9DisHewqjgGA0V5rcPWC9CV6d3UZbb9HAX2C4VI5hf8IXGDjoPF3DwHHjc4vgyEGLmUYVPT0qEoUFLD7gADgwQFKphGxNgtnfjiz4azhFCZXQyFQFAjAnA6QEj6fnHAqIp4m5E/f76CwAA///R6/3tAAAABklEQVQDAArfoyGWSQZzAAAAAElFTkSuQmCC",
+        "showLabel": true,
+        "quantity": 1,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "4",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "item_mt8exs4m_54",
+      "type": "item",
+      "position": {
+        "x": 3580.769478109263,
+        "y": 60.43980021318119
+      },
+      "data": {
+        "kind": "item",
+        "label": "橙子汁【液体】",
+        "image": "",
+        "showLabel": true,
+        "quantity": 250,
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8exs4m_55",
+      "type": "action",
+      "position": {
+        "x": 3356.154093493878,
+        "y": 85.05518482856583
+      },
+      "data": {
+        "kind": "action",
+        "label": "搅拌",
+        "action": "搅拌",
+        "image": "",
+        "outputUnit": "mb"
+      }
+    },
+    {
+      "id": "item_mt8ez6zj_58",
+      "type": "item",
+      "position": {
+        "x": 4025.3411690336425,
+        "y": -162.19323610043236
+      },
+      "data": {
+        "kind": "item",
+        "label": "橙子果酒【液体】",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACP0lEQVR4AZSSX0hTURzHP/c6vVupG6lLdLYlaGZ/sCgrIXqo6EkCKXvwIZAgsLceeugpKgjE1x4KAuklEMIoKFAso6gMM50I6pZrbujcdA03d9umO907kJxp6OH3O4ff4ff9nN/vnCOzzWHPU8TJIpOwGUxCl24LYFcUca4sQXe7imfIhg7ZMmCvkpe+05Cgo11i5qud5PisXgBbAlgMxaIkD6m2DqYGBWNuL/tbkviXVWlTQLmyS9wqQvRfQLw7P8/AhyoOF0DfS5nb701Mp5KSXsI/AMeOQlFvtYlWc5h7bXCmOZe6Ji312xgzLnjoJXOytpOxLIBSLAtRL/Og0k/jATDYtJyjexCnTpDUxNNuLV5n8mpsNRYKs83I8QYzd2tLqb7qIL0CwhNk8ekA3wdhNr6a/XfNAOwmi7h5VsFcouCZjFNzqICqLj8+J0RcRuam4UdIYiKaaZu1Qz6YbxVt1gifP8W4WCpRXmWkxrGT9hs1ONqOMO8KMeaB4QWJTg3iVdNZFLkiP8ppBzxuVrkcD/O8qZoXPQH6nEu0dIdp9Fq4FDTRtQDrxXolciSRYnchFNngWGsJkx199F8vY2QkgmtcRbEYqAgkNhRnAPpEEla0jyXHlqgsg95rQ3Tsg4A7wa9X4U3FulYOpdJ0juYwOgW+13G+DMNPFd48irLsjOL7nd2zLlrrsjuWlp4tCnonwK9VMRmEgblcnLFcAon/i3VQ5hl1yJOQzJWPOdz35NATT/M2pmbdtp68kf8BAAD//xfzagYAAAAGSURBVAMAZtPbzaD56gEAAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 1,
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8ez6zj_59",
+      "type": "action",
+      "position": {
+        "x": 3814.8363100205074,
+        "y": -130.49097499104573
+      },
+      "data": {
+        "kind": "action",
+        "label": "大容量发酵罐",
+        "action": "大容量发酵罐",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "action_mt8ezmlj_63",
+      "type": "action",
+      "position": {
+        "x": 4304.676034062453,
+        "y": -134.48534344631565
+      },
+      "data": {
+        "kind": "action",
+        "label": "注液",
+        "action": "注液",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8f3zuu_80",
+      "type": "item",
+      "position": {
+        "x": 4589.918994624069,
+        "y": 65.2637036752107
+      },
+      "data": {
+        "kind": "item",
+        "label": "杯装橙子果酒",
+        "image": "",
+        "showLabel": true,
+        "quantity": 1,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "17",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8f3zuu_81",
+      "type": "action",
+      "position": {
+        "x": 4341.4574561625295,
+        "y": 67.18678059828761
+      },
+      "data": {
+        "kind": "action",
+        "label": "注液",
+        "action": "注液",
+        "image": "",
+        "outputUnit": "个",
+        "groupIds": []
+      }
+    },
+    {
+      "id": "item_mt8fdlqf_85",
+      "type": "item",
+      "position": {
+        "x": 3010.5558766888994,
+        "y": 288.1369856230443
+      },
+      "data": {
+        "kind": "item",
+        "label": "朽老苹果",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABoElEQVR4AZSSzUqCQRSGjwX9C5oG0n8tIqWoNq2CaOU1RHfVPbTsAtoERasWmSgZFirmJ1L+Jpqt7HuOzKQZQeI758yceZ85M3wj8o/f7vF+18jY/gSYzSaGthckcrSoWj4Md4EMAfbWtroIU7/BF5qWzlsdjxRTNYlENwXIAADjYtAvO2sLunE26NFohnqppeaJOZ9ZEgsw5oB3SotLz+Nyc5ZSQ7XcFUx0AaSUcGw3FoALc2B6ShDzg5OwrEdXpL8TrkUtc1eS/FXKowBzOgW07JuRjVCQVDr591507z8f9iuMTnTRHRTgRuF0Ioo5rwRtXxN34EQ3DP2/AW7rVCuttr3CanxMiqcFFTXeggiM9sktgEml2SYIEMTEOzlOkPWKVx4uHvVhR+5716JgAcbAonlEgOZqgIAE8qNssVJALJv0xLOOPhwmqgZC3q9atSa5hmM/EAX0byiUa3ba/PjUvOG+C0nuxRkws2YBdHF+fcuapEtljRhIODWRzgyZqVkAE1oDRBeXySc1cDX/rF9z9vzUAMAUgSDmRET+m74AAAD//wRcJG8AAAAGSURBVAMAh5bEIdyNI7oAAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 5,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "4",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "item_mt8ff0wn_89",
+      "type": "item",
+      "position": {
+        "x": 3537.593537333692,
+        "y": 317.16329381760215
+      },
+      "data": {
+        "kind": "item",
+        "label": "朽老苹果汁【液体】",
+        "image": "",
+        "showLabel": true,
+        "quantity": 250,
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8ff0wn_90",
+      "type": "action",
+      "position": {
+        "x": 3297.593537333692,
+        "y": 317.16329381760215
+      },
+      "data": {
+        "kind": "action",
+        "label": "搅拌",
+        "action": "搅拌",
+        "image": "",
+        "outputUnit": "mb"
+      }
+    },
+    {
+      "id": "item_mt8fgv8v_93",
+      "type": "item",
+      "position": {
+        "x": 4067.501777720588,
+        "y": 310.82501722862276
+      },
+      "data": {
+        "kind": "item",
+        "label": "迷之果酒【液体】",
+        "image": "",
+        "showLabel": true,
+        "quantity": 1000,
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8fgv8v_94",
+      "type": "action",
+      "position": {
+        "x": 3869.0402392590495,
+        "y": 337.3634787670843
+      },
+      "data": {
+        "kind": "action",
+        "label": "大容量发酵罐",
+        "action": "大容量发酵罐",
+        "image": "",
+        "outputUnit": "mb"
+      }
+    },
+    {
+      "id": "item_mt8figw0_98",
+      "type": "item",
+      "position": {
+        "x": 4575.194085412896,
+        "y": 275.4404018440073
+      },
+      "data": {
+        "kind": "item",
+        "label": "迷之果酒",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACWklEQVR4AZSRXUiTURjH/+dMTW1bUyvRPmRRaXUROVChLoQI0xZdpFIS1YVQg1gailub9IV0UxcloZZ4VU2KoOgiysFsYzAqDcNis8nM7IOYa45t7vM97UgMRgvdy/uHcw7n93uecw5Fht/m7BxWX1bIFApFNkczEnBYu7cA5/dJsd7timQk6Ok4wzig2CGF69siPn738ymW7aBUXMBUuTJmHfvMnppe4OTwL1y3/sZsNEK4Ia2gKE/GeErzZWwNiaM8i2LS9o60d+qxVl6RhNMKNq4uZu1tpzE4oIfp9V2Ic4HDmjKcQBZKJh34ZHdwLpmUDjjcfOoQ7vQacK/jEV6pjVDp2gTlzRm8pFHMZcXhCXpJkk4MkoJyWR7bJA3D+MAKXdVx1ndOg0A4yq7phiiDBP7cbIRT0ASd+GkiEBEJ0+4Xo3O3H0/UXsxM/CS9g8OwuKZItaQC8ZgIMvkWOENL2zmSDC0Sy9jFukI0a1qEWtURgeaUsBa1Aw6RER8iThh944hLBDinpsESvSTJvwNaU12JAbMPs7Y39PmtUXrj/jTZebCGXW2VY4M0igKJBMqGWsTiArz+1PNzB72kPYZi0Tqc7Q6hoWkXivJEsD02w/XVi/ryVejaE8NDwzMsBBbS3ABAx95/EUAIbrdewNHL4+jqqWPBxRgxv/WxUUcQ3RY/3IF/K/PqPFR/pZ9a7P1Q9mlBItsgbxoh+YQhCkomfMCP/1TmMA+d98+TrdsbUXWgEo7YHF9D45AbBnsInmVgvnnpXdwJiWnEjIgQh8AEuIMeshKYC/4AAAD//yKSm6YAAAAGSURBVAMAt0rppvvDWyMAAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 1,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "34",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAkUlEQVR4AeySsQ2AIBREv05EwxLsAIMwAB1LwDg0dIyjPhJswViq8Zkv8Y7j4i4vr99A5IsdOOcOGL/Pow4Qeu+ltTb08xIRDYwxt1BrfcBSAnYFpVQ3yDkL8DI1SCltIQSptfJ9h9laK6WUbWrQFdeD3REC87XU76kB5yc+whijADNHWOqAxomLkMjAzBoRTgAAAP//TxzaYwAAAAZJREFUAwBZD0nV3Dm+bAAAAABJRU5ErkJggg==",
+            "name": "铁星",
+            "value": "34",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR4AeySPQqDQBSEn+YEKVKnTZ8qNwgELNKnSx8IBAK5QMDK3s4bCIK9tva21hbiAfz7FtZ2FUsVP3kuzuzsoC0Lr81AZI0dhM99B/r3mdUBwpvnSJLWWm8uEZHm+r6Mws/J7mBSAnaF3fGgDP7ZQ4AXo4HjV1b0CqUpSr5XMH/Pgbh5axkNlGJ4sDtCYB6W1G004PzER/i7xwLMHGFSBzROXIREBmbWiNADAAD//4oeaokAAAAGSURBVAMA9aBJ1QmgAowAAAAASUVORK5CYII=",
+            "name": "金星",
+            "value": "51",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR4AeySIQ6DQBREP62qbNJrNGkqmlb3CPXtGVpJNUg4A2hwWDQJgmC5AwkeA7xNFrsQJBAe+WyY2dkJO1l4bQYia+zg+LM70L/PrA4QPv4f2deV1ptLRKQ53M+j8PR+dTApAbvC5XlVBjffFeDFaNB4rpU5gZRpwfcK5vxrSx3GltFAKYYHuyME5mFJ3UYDzk98hG0SCTBzhEkd0DhxERIZmFkjQg8AAP//bgaXEwAAAAZJREFUAwAmLEi5iHHqLQAAAABJRU5ErkJggg==",
+            "name": "钻星",
+            "value": "102",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1",
+          "grp_mt4igetf_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8figw0_99",
+      "type": "action",
+      "position": {
+        "x": 4335.194085412896,
+        "y": 332.74809415169966
+      },
+      "data": {
+        "kind": "action",
+        "label": "注液",
+        "action": "注液",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8fp5bd_109",
+      "type": "item",
+      "position": {
+        "x": 3003.012334684035,
+        "y": 545.7461273150211
+      },
+      "data": {
+        "kind": "item",
+        "label": "葡萄",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABlUlEQVR4AbSRvUtCYRTGjy1BX1AODWFJhGQtiYJTGFQILv0DNbVFQ+DcYHtbNBUEBQ0RWEMtDYotgVL0YSEhktSlqSEzmm73d+gVjYogEp73nHvOeZ73eY9N8sff/wmMTIds4Iv4bfDZaHDIY1P70UG71yvdo8PS4mmVepFIyKfkLwWmgnEbnG1lXV2HfcyIEUIEcqX6Krl82UWzwQHExEJCYqEZIQ/0TMj4+aw8l0rymLliXtLZgsuQKTQIUEjuZMSyLCk+ncjp/ZEkOxbVAc+gjwtADmoC3GhIEGkG3FGC3l4tv+guOsMDGrXhHCoAGev9nWEh8gTy3dsl2YimJD64Lf5KTBB5e7AcmtSWqgJUsG4iTyAH62v7cnmTJ5XmsltFENKCc6jAXm7ZhW2WRgQ8x+lLqrwqd5Wc0MMVIoX0tf4D9FWABEDEfm9bUBien1yRMc8cLV2oJh+HEVEBswPIxi4ODrKbeju5wUXxuHY7WipAYt6KZcBgPYlvwGw9VIAdQAI0zSARUPsOKkCTQQO+f4t3AAAA//+cRZmiAAAABklEQVQDABFl2iEnZW+UAAAAAElFTkSuQmCC",
+        "showLabel": true,
+        "quantity": 1,
+        "description": "下方为泥土或草方块时可长出",
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "3",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "item_mt8fqghc_113",
+      "type": "item",
+      "position": {
+        "x": 3588.8961729077914,
+        "y": 527.5603019084142
+      },
+      "data": {
+        "kind": "item",
+        "label": "葡萄汁【液体】",
+        "image": "",
+        "showLabel": true,
+        "quantity": 250,
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8fqghc_114",
+      "type": "action",
+      "position": {
+        "x": 3241.6300774316715,
+        "y": 583.5252212872595
+      },
+      "data": {
+        "kind": "action",
+        "label": "搅拌",
+        "action": "搅拌",
+        "image": "",
+        "outputUnit": "mb"
+      }
+    },
+    {
+      "id": "item_mt8frltl_117",
+      "type": "item",
+      "position": {
+        "x": 4114.582129061877,
+        "y": 532.3457882579637
+      },
+      "data": {
+        "kind": "item",
+        "label": "甜葡萄酒【液体】",
+        "image": "",
+        "showLabel": true,
+        "quantity": 1,
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8frltl_118",
+      "type": "action",
+      "position": {
+        "x": 3874.582129061877,
+        "y": 577.3457882579637
+      },
+      "data": {
+        "kind": "action",
+        "label": "大容量发酵罐",
+        "action": "大容量发酵罐",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8ftim2_122",
+      "type": "item",
+      "position": {
+        "x": 4572.450840465538,
+        "y": 530.8330915553245
+      },
+      "data": {
+        "kind": "item",
+        "label": "甜葡萄酒",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACUUlEQVR4AZSQW0gUURjH/9/sZXbxkuuuiJd0JR/SEAq6GZEvEkEIUpBEDz0YFQgZFAY9RSCERUElBPVQ0osPUSIERipWkKWlEmaWXZRw22Z1d3XdccbZ+doZ2IXFNfTjfN85D+f3O4e/gA1WqV3kvW4nF1uduoFuSFAqilxbqOBpm4yfH4spLuF1C8pEu35ln4IbbYTZ96VQv/iMD2Bdghyrh/PsoMrtwI9hxvjUNCpOqPitybSmwOss593ZNfrZomY+6m7E2+tdeNZ1Gl/HgMsDTsysqIR4pRXkCi522wu43FFBDosdB7zb9Ft3R/AroqKpL9t8Oc6aa5Wg2CbyVEcQ+7OryAYLtuSWoczjoG7/EAYjI9DZYYKJkSJwWfK5watA8VTj5qDK11rbMSFN8NV3TxDW57CkzSe45J4UGPCZcj+O1QEtdSVA/knkHapHbfUdWtRDJEVmoepKEkwcTIHLWqjvyjoIv9SMuT/AQ7ke9bbzRAUXsHlPHnZ6ehDRgmCOIaT9NcNLCrwZlbw1qwpFlI+ooGLgzUUEO47zo9cVPH7vFPo7JbzwZSLHHkU4NpcCGxJB01RkkIs0gdHecJibanbgUss5amt8TK86J/n+ZCYUTcO0LK+CTYEgWBDQZiGSiIUo0bjPyu4MAd8CR3D7QwltslkxIy+nhU3BjDxJ3yOfuH+pm1t7+vBg9CX1hkZ5TB5CQFEwPB9aEzYFxljUg0JYC1Bv8Dk+Lw8jpEskxeH5mP+/sMEKxjA6sOKjJS2MhZUgAlEpHlhq2saddP0PAAD//xclLZ4AAAAGSURBVAMAywrwvMzSmaUAAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 1,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "34",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR4AeySIQ6DQBREP62qbNJrNGkqmlb3CPXtGVpJNUg4A2hwWDQJgmC5AwkeA7xNFrsQJBAe+WyY2dkJO1l4bQYia+zg+LM70L/PrA4QPv4f2deV1ptLRKQ53M+j8PR+dTApAbvC5XlVBjffFeDFaNB4rpU5gZRpwfcK5vxrSx3GltFAKYYHuyME5mFJ3UYDzk98hG0SCTBzhEkd0DhxERIZmFkjQg8AAP//bgaXEwAAAAZJREFUAwAmLEi5iHHqLQAAAABJRU5ErkJggg==",
+            "name": "钻星",
+            "value": "102",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR4AeySPQqDQBSEn+YEKVKnTZ8qNwgELNKnSx8IBAK5QMDK3s4bCIK9tva21hbiAfz7FtZ2FUsVP3kuzuzsoC0Lr81AZI0dhM99B/r3mdUBwpvnSJLWWm8uEZHm+r6Mws/J7mBSAnaF3fGgDP7ZQ4AXo4HjV1b0CqUpSr5XMH/Pgbh5axkNlGJ4sDtCYB6W1G004PzER/i7xwLMHGFSBzROXIREBmbWiNADAAD//4oeaokAAAAGSURBVAMA9aBJ1QmgAowAAAAASUVORK5CYII=",
+            "name": "金星",
+            "value": "51",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAkUlEQVR4AeySsQ2AIBREv05EwxLsAIMwAB1LwDg0dIyjPhJswViq8Zkv8Y7j4i4vr99A5IsdOOcOGL/Pow4Qeu+ltTb08xIRDYwxt1BrfcBSAnYFpVQ3yDkL8DI1SCltIQSptfJ9h9laK6WUbWrQFdeD3REC87XU76kB5yc+whijADNHWOqAxomLkMjAzBoRTgAAAP//TxzaYwAAAAZJREFUAwBZD0nV3Dm+bAAAAABJRU5ErkJggg==",
+            "name": "铁星",
+            "value": "34",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1",
+          "grp_mt4igetf_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8ftim2_123",
+      "type": "action",
+      "position": {
+        "x": 4332.450840465538,
+        "y": 575.8330915553245
+      },
+      "data": {
+        "kind": "action",
+        "label": "注液",
+        "action": "注液",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8fyc8x_135",
+      "type": "item",
+      "position": {
+        "x": 2722.6319621995463,
+        "y": 768.1774528591545
+      },
+      "data": {
+        "kind": "item",
+        "label": "南瓜",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABuklEQVR4AUzSsUpdURAF0OESEHkkhQSCJMEUNoGQKmDSBfwBC8FasLfxD+z8Bn9AbOxFsBBUsBLBxkJRsREL5SEPRJ01z/Pwwtwzs2efPfuec7u95c8vLTYXJyq/XPteK7xhcvG+lnfx9kx9HY+/P3txc/9ciFoorC1ajTf5qYsS0NQQRC6uH6UR334HkrUiUbU+XpZDAYBoJOqacXU8dJTrxeFhHJz2Y2pmJgyU440cFLi9X/v6/UEQFC1HNp0onAN1CdSutAvcObqL2fl+PHy5jfX9h2qd3TzWp9QQLvK8IvmaHVDSYnpyPE7OIn5NRyzMDWL3/ClgRNg2tXGtHTuSg7RvOuLG1thIZHVlEDAiNreBzsRndV5E2J/9M1HT/v/4EE2EGy6ICEM4IUSw83KykY8GkmlL/z6WCCGCMGGIYUmv2xidgc0aCJqEiLTNalPxBA7nwzPIe+YEKHyWafJeb8wShNk3BLeJ1DUq3n8GkmnC7rYSLa5r1MioQ6ToB8m67rvuOO+ZRWJw0YTkcE6Hh/imWOr5qyIQRCBSdQqWcBYjLPNyABBZh/sV8hbVy3OCl9tsFBYRrwAAAP//t+iJsQAAAAZJREFUAwAUxxxypYVmLgAAAABJRU5ErkJggg==",
+        "showLabel": true,
+        "quantity": 1,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "8",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "item_mt8fzmqh_139",
+      "type": "item",
+      "position": {
+        "x": 3170.9629049128675,
+        "y": 775.4847388555306
+      },
+      "data": {
+        "kind": "item",
+        "label": "南瓜片",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABF0lEQVR4AbyRv8tBURjHH+876a33rTcLBpHJitFkJpOyWWT0Hxgs/gab2SSjlU1kMkkZZFdSSpfPqed2nS5uKbee+5zzPM/3xznnS978PkvQr/44tuHADgCno2Ehe0kCEQAq5v4lEQ+LTRKIYLP/dkUhcTe3xUsC1FPRi2x3p9u4SCSWNFl/DwmmrYhD1Jo1wYGt/JQAYL5ckfX+JLPRUHCgADv7OlAg6qy5OAXOZyvjSPd3BJy3Xfh1uHGAqDOo9jk/9c7kEKJOuASAUWqU/syFsWYAMjJgW526IVBwNp+hZt4bVYKCgseLs3jV6RmC+uAYookCw97g+bq9pdC3wS4BC5oMMewNavQI5uwwDrTIkF9o3y9fAQAA//+9vM5xAAAABklEQVQDAL/ziSHi2ct3AAAAAElFTkSuQmCC",
+        "showLabel": true,
+        "quantity": 4,
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "1",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8fzmqi_140",
+      "type": "action",
+      "position": {
+        "x": 2932.501366451329,
+        "y": 801.6385850093768
+      },
+      "data": {
+        "kind": "action",
+        "label": "砧板",
+        "action": "砧板",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8g0mdt_143",
+      "type": "item",
+      "position": {
+        "x": 3590.962904912867,
+        "y": 780.1001234709152
+      },
+      "data": {
+        "kind": "item",
+        "label": "南瓜汁【液体】",
+        "image": "",
+        "showLabel": true,
+        "quantity": 1,
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8g0mdt_144",
+      "type": "action",
+      "position": {
+        "x": 3387.885981835944,
+        "y": 806.2539696247613
+      },
+      "data": {
+        "kind": "action",
+        "label": "搅拌",
+        "action": "搅拌",
+        "image": "",
+        "outputUnit": "个"
+      }
+    },
+    {
+      "id": "item_mt8g2fq9_147",
+      "type": "item",
+      "position": {
+        "x": 4107.522351103484,
+        "y": 746.4456376673899
+      },
+      "data": {
+        "kind": "item",
+        "label": "南瓜酒【液体】",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACP0lEQVR4AZSRS0hUURiAv3tvo6NljpYQSoMglaIkMiUUWVDblKJNaZt2mUVGYFQLKyHsARWtyhYW7hqwjRCE9oAeps2Q+ahBbaZisgzN0ZzrvTqne2Y0EEfSn/Ofew/nfN//c47KMiNPs4uStBUiX0sSEl2WIFdNFOtSDWp3TNNyKkyeliyWLHA5bOJ04RTucxHSHXaetoFi0dbgv+EA0dlgUlSoMByA9z06Vz/Y6TUnpSM+n5eaIE7kIy4UIQYvWWeKS3EdzWV/A1G4z9QVrIjbgcuZLpoPGNw8DrUnVdIqrZ8fQ/ga+zjigjnY4lkgyMhyCLEphYLUIsa+WUdkocAr8HTQ1g/XPNHC1kZszBNIODt/LcG9Ti5W5ZCZtBujrAp/k4dBL7z4aSfZlhgjZ+d/gro9qpDwgFPgyCmgIqec2oo1pF1pxVleTLfVTXtAZdKcmkVjn6igfhuiemeEBxn9jAwbVBZOsO+Nh9LsMraXrCazPkirX2HcCDMcFkoMjc3q1vWJ4tAulZVZdjbev0GkuYmz1zs5nDlItfsu3kdB1K4Qjd/tC2CpUBNsGt2/k1E2b0H58hjFW8NEgY+aM+18fujH9nKUPyMmoZHwvMoSlql2+XWefJzh9uV3TGPCp170XzP0aANseB1kcmxxOCoYj0SUZo/g7ZDG+WPWc61KwbSyzpdE16jGYpUlLDN6iYGQrjzvnWY8pHHLrXPwnuBZ3wzBCSNu2xKcy6hALr5aErfX4E6LTodvakmw5P4CAAD//2Yw2QgAAAAGSURBVAMAJ9neqM5pMR0AAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 250,
+        "description": "",
+        "groupIds": [
+          "grp_mt498vxp_2"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8g2fq9_148",
+      "type": "action",
+      "position": {
+        "x": 3844.44542802656,
+        "y": 790.6764068981593
+      },
+      "data": {
+        "kind": "action",
+        "label": "大容量发酵罐",
+        "action": "大容量发酵罐",
+        "image": "",
+        "outputUnit": "个",
+        "groupIds": []
+      }
+    },
+    {
+      "id": "item_mt8g3duq_152",
+      "type": "item",
+      "position": {
+        "x": 4585.277460398383,
+        "y": 764.4983616482912
+      },
+      "data": {
+        "kind": "item",
+        "label": "南瓜酒",
+        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACP0lEQVR4AZSRS0hUURiAv3tvo6NljpYQSoMglaIkMiUUWVDblKJNaZt2mUVGYFQLKyHsARWtyhYW7hqwjRCE9oAeps2Q+ahBbaZisgzN0ZzrvTqne2Y0EEfSn/Ofew/nfN//c47KMiNPs4uStBUiX0sSEl2WIFdNFOtSDWp3TNNyKkyeliyWLHA5bOJ04RTucxHSHXaetoFi0dbgv+EA0dlgUlSoMByA9z06Vz/Y6TUnpSM+n5eaIE7kIy4UIQYvWWeKS3EdzWV/A1G4z9QVrIjbgcuZLpoPGNw8DrUnVdIqrZ8fQ/ga+zjigjnY4lkgyMhyCLEphYLUIsa+WUdkocAr8HTQ1g/XPNHC1kZszBNIODt/LcG9Ti5W5ZCZtBujrAp/k4dBL7z4aSfZlhgjZ+d/gro9qpDwgFPgyCmgIqec2oo1pF1pxVleTLfVTXtAZdKcmkVjn6igfhuiemeEBxn9jAwbVBZOsO+Nh9LsMraXrCazPkirX2HcCDMcFkoMjc3q1vWJ4tAulZVZdjbev0GkuYmz1zs5nDlItfsu3kdB1K4Qjd/tC2CpUBNsGt2/k1E2b0H58hjFW8NEgY+aM+18fujH9nKUPyMmoZHwvMoSlql2+XWefJzh9uV3TGPCp170XzP0aANseB1kcmxxOCoYj0SUZo/g7ZDG+WPWc61KwbSyzpdE16jGYpUlLDN6iYGQrjzvnWY8pHHLrXPwnuBZ3wzBCSNu2xKcy6hALr5aErfX4E6LTodvakmw5P4CAAD//2Yw2QgAAAAGSURBVAMAJ9neqM5pMR0AAAAASUVORK5CYII=",
+        "showLabel": true,
+        "quantity": 250,
+        "description": "",
+        "attributes": [
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABhQTFRFAAAAsmQR/fVf+tZK6bEV3JYTdSgC//3gjZcBPwAAAAh0Uk5TAP/////////VylQyAAAARUlEQVQYla3PQQ7AIAwDQRI75P8/rkuVhjNibx4BEmPcylbbdgVab4RqMQ+Ckg0CEsyC9O9KwWRm6tEokPA98m/J6vQXD4VRASqi3PKZAAAAAElFTkSuQmCC",
+            "name": "金币",
+            "value": "22",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAkUlEQVR4AeySsQ2AIBREv05EwxLsAIMwAB1LwDg0dIyjPhJswViq8Zkv8Y7j4i4vr99A5IsdOOcOGL/Pow4Qeu+ltTb08xIRDYwxt1BrfcBSAnYFpVQ3yDkL8DI1SCltIQSptfJ9h9laK6WUbWrQFdeD3REC87XU76kB5yc+whijADNHWOqAxomLkMjAzBoRTgAAAP//TxzaYwAAAAZJREFUAwBZD0nV3Dm+bAAAAABJRU5ErkJggg==",
+            "name": "铁星",
+            "value": "22",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR4AeySPQqDQBSEn+YEKVKnTZ8qNwgELNKnSx8IBAK5QMDK3s4bCIK9tva21hbiAfz7FtZ2FUsVP3kuzuzsoC0Lr81AZI0dhM99B/r3mdUBwpvnSJLWWm8uEZHm+r6Mws/J7mBSAnaF3fGgDP7ZQ4AXo4HjV1b0CqUpSr5XMH/Pgbh5axkNlGJ4sDtCYB6W1G004PzER/i7xwLMHGFSBzROXIREBmbWiNADAAD//4oeaokAAAAGSURBVAMA9aBJ1QmgAowAAAAASUVORK5CYII=",
+            "name": "金星",
+            "value": "33",
+            "desc": ""
+          },
+          {
+            "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR4AeySIQ6DQBREP62qbNJrNGkqmlb3CPXtGVpJNUg4A2hwWDQJgmC5AwkeA7xNFrsQJBAe+WyY2dkJO1l4bQYia+zg+LM70L/PrA4QPv4f2deV1ptLRKQ53M+j8PR+dTApAbvC5XlVBjffFeDFaNB4rpU5gZRpwfcK5vxrSx3GltFAKYYHuyME5mFJ3UYDzk98hG0SCTBzhEkd0DhxERIZmFkjQg8AAP//bgaXEwAAAAZJREFUAwAmLEi5iHHqLQAAAABJRU5ErkJggg==",
+            "name": "钻星",
+            "value": "66",
+            "desc": ""
+          }
+        ],
+        "groupIds": [
+          "grp_mt494wv1_1",
+          "grp_mt4igetf_1"
+        ]
+      }
+    },
+    {
+      "id": "action_mt8g3duq_153",
+      "type": "action",
+      "position": {
+        "x": 4342.906966488099,
+        "y": 780.2917915135438
+      },
+      "data": {
+        "kind": "action",
+        "label": "注液",
+        "action": "注液",
+        "image": "",
+        "description": "",
+        "extra": "",
+        "outputUnit": "mb"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_mt8e8ug6_8",
+      "source": "item_mt8e8ug6_5",
+      "target": "action_mt8e8ug6_7",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8e8ug6_9",
+      "source": "action_mt8e8ug6_7",
+      "target": "item_mt8e8ug6_6",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8e9h2c_12",
+      "source": "item_mt8e8ug6_6",
+      "target": "action_mt8e9h2c_11",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×3 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8e9h2c_13",
+      "source": "action_mt8e9h2c_11",
+      "target": "item_mt8e9h2c_10",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×3 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ecmys_16",
+      "source": "item_mt8e9h2c_10",
+      "target": "action_mt8ecmys_15",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ecmys_17",
+      "source": "action_mt8ecmys_15",
+      "target": "item_mt8ecmys_14",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ejmst_25",
+      "source": "item_mt8eiacl_19",
+      "target": "action_mt8ejmst_24",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ejmst_26",
+      "source": "action_mt8ejmst_24",
+      "target": "item_mt8ejmst_23",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8eks9x_29",
+      "source": "item_mt8ejmst_23",
+      "target": "action_mt8eks9x_28",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8eks9x_30",
+      "source": "action_mt8eks9x_28",
+      "target": "item_mt8eks9x_27",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×2 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8en57p_34",
+      "source": "item_mt8en57p_31",
+      "target": "action_mt8en57p_33",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8en57p_35",
+      "source": "action_mt8en57p_33",
+      "target": "item_mt8en57p_32",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×4 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8eqa6d_42",
+      "source": "item_mt8ep965_36",
+      "target": "action_mt8eqa6d_41",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8eqa6d_43",
+      "source": "action_mt8eqa6d_41",
+      "target": "item_mt8eqa6d_40",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8esx2u_46",
+      "source": "item_mt8eks9x_27",
+      "target": "action_mt8esx2u_45",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8esx2u_47",
+      "source": "item_mt8eqa6d_40",
+      "target": "action_mt8esx2u_45",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8esx2u_48",
+      "source": "item_mt8en57p_32",
+      "target": "action_mt8esx2u_45",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8esx2u_49",
+      "source": "action_mt8esx2u_45",
+      "target": "item_mt8esx2u_44",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×5 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8exs4m_56",
+      "source": "item_mt8eweef_50",
+      "target": "action_mt8exs4m_55",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×3 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8exs4m_57",
+      "source": "action_mt8exs4m_55",
+      "target": "item_mt8exs4m_54",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8ez6zj_60",
+      "source": "item_mt8esx2u_44",
+      "target": "action_mt8ez6zj_59",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ez6zj_61",
+      "source": "item_mt8exs4m_54",
+      "target": "action_mt8ez6zj_59",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1000 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8ez6zj_62",
+      "source": "action_mt8ez6zj_59",
+      "target": "item_mt8ez6zj_58",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1000 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8ezmlj_64",
+      "source": "item_mt8ez6zj_58",
+      "target": "action_mt8ezmlj_63",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1000 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8ezmlj_65",
+      "source": "action_mt8ezmlj_63",
+      "target": "item_mt8a4xqn_35",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8f3zuu_82",
+      "source": "item_mt8ez6zj_58",
+      "target": "action_mt8f3zuu_81",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8f3zuv_83",
+      "source": "item_mt8e9h2c_10",
+      "target": "action_mt8f3zuu_81",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8f3zuv_84",
+      "source": "action_mt8f3zuu_81",
+      "target": "item_mt8f3zuu_80",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ff0wn_91",
+      "source": "item_mt8fdlqf_85",
+      "target": "action_mt8ff0wn_90",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×3 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ff0wn_92",
+      "source": "action_mt8ff0wn_90",
+      "target": "item_mt8ff0wn_89",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8fgv8v_95",
+      "source": "item_mt8ff0wn_89",
+      "target": "action_mt8fgv8v_94",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8fgv8v_96",
+      "source": "item_mt8esx2u_44",
+      "target": "action_mt8fgv8v_94",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8fgv8v_97",
+      "source": "action_mt8fgv8v_94",
+      "target": "item_mt8fgv8v_93",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8figw0_100",
+      "source": "item_mt8fgv8v_93",
+      "target": "action_mt8figw0_99",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8figw0_101",
+      "source": "item_mt8ecmys_14",
+      "target": "action_mt8figw0_99",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8figw0_102",
+      "source": "action_mt8figw0_99",
+      "target": "item_mt8figw0_98",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8fqghc_115",
+      "source": "item_mt8fp5bd_109",
+      "target": "action_mt8fqghc_114",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×3 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8fqghc_116",
+      "source": "action_mt8fqghc_114",
+      "target": "item_mt8fqghc_113",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8frltl_119",
+      "source": "item_mt8fqghc_113",
+      "target": "action_mt8frltl_118",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8frltl_120",
+      "source": "item_mt8esx2u_44",
+      "target": "action_mt8frltl_118",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8frltl_121",
+      "source": "action_mt8frltl_118",
+      "target": "item_mt8frltl_117",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8ftim2_124",
+      "source": "item_mt8frltl_117",
+      "target": "action_mt8ftim2_123",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8ftim2_125",
+      "source": "item_mt8ecmys_14",
+      "target": "action_mt8ftim2_123",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8ftim2_126",
+      "source": "action_mt8ftim2_123",
+      "target": "item_mt8ftim2_122",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8fzmqi_141",
+      "source": "item_mt8fyc8x_135",
+      "target": "action_mt8fzmqi_140",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8fzmqi_142",
+      "source": "action_mt8fzmqi_140",
+      "target": "item_mt8fzmqh_139",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×4 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8g0mdt_145",
+      "source": "item_mt8fzmqh_139",
+      "target": "action_mt8g0mdt_144",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×3 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8g0mdt_146",
+      "source": "action_mt8g0mdt_144",
+      "target": "item_mt8g0mdt_143",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8g2fq9_149",
+      "source": "item_mt8g0mdt_143",
+      "target": "action_mt8g2fq9_148",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8g2fq9_150",
+      "source": "item_mt8esx2u_44",
+      "target": "action_mt8g2fq9_148",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_mt8g2fq9_151",
+      "source": "action_mt8g2fq9_148",
+      "target": "item_mt8g2fq9_147",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8guv4m_157",
+      "source": "item_mt8g2fq9_147",
+      "target": "action_mt8g3duq_153",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×250 mb",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "mb"
+    },
+    {
+      "id": "e_mt8guv4m_159",
+      "source": "action_mt8g3duq_153",
+      "target": "item_mt8g3duq_152",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#e6a23c",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#e6a23c",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#e6a23c",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    },
+    {
+      "id": "e_1787650353892_zjii",
+      "source": "item_mt8ecmys_14",
+      "target": "action_mt8g3duq_153",
+      "type": "default",
+      "class": "recipe-edge",
+      "style": {
+        "stroke": "#409eff",
+        "strokeWidth": 2,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#409eff",
+        "width": 16,
+        "height": 16
+      },
+      "label": "×1 个",
+      "labelStyle": {
+        "fill": "#409eff",
+        "fontWeight": 700,
+        "fontSize": "12px"
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        4,
+        2
+      ],
+      "labelBgBorderRadius": 4,
+      "unit": "个"
+    }
+  ],
+  "viewport": {
+    "x": -515.7910807418881,
+    "y": 395.94412039972167,
+    "zoom": 0.41179264463351656
+  }
+}
